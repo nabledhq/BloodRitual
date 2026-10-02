@@ -16,14 +16,40 @@ Then open the URL Vite prints (usually http://localhost:5173). You will see
 your character standing in a camp in the Florida Everglades around 1900: a
 palmetto-thatched chickee, a star fire with an iron kettle, a dugout canoe by
 a tannin-dark pond, cypress, cabbage palms, saw palmetto and sawgrass, and two
-villagers going about their day.
+villagers going about their day. A **How to Play** panel listing the controls
+is shown when the game starts; press `H` to hide or show it again.
 
-Controls:
+## Controls
 
-- **Drag** to orbit the camera around the character
-- **Scroll** to zoom in and out
-- **Point** at the chickee, fire, mortar, canoe or a villager to highlight it
-  and see a short description
+Movement is relative to the camera: "forward" is the direction the camera
+is looking.
+
+| Action                 | Keys             |
+| ---------------------- | ---------------- |
+| Move forward           | `W` / `↑`        |
+| Move back              | `S` / `↓`        |
+| Move left              | `A` / `←`        |
+| Move right             | `D` / `→`        |
+| Run (hold)             | `Shift`          |
+| Jump                   | `Space`          |
+| Crouch (hold)          | `C`              |
+| Look around            | `Drag mouse`     |
+| Zoom                   | `Scroll`         |
+| Show / hide this panel | `H`              |
+
+Tips:
+
+- Use WASD or the arrow keys to move.
+- Hold Shift while moving to run.
+- Press Space while moving to jump over obstacles.
+- Hold C to crouch.
+
+**Point** at the chickee, fire, mortar, canoe or a villager to highlight it
+and see a short description. Outside the flat camp clearing the character
+follows the height of the terrain.
+
+Walk speed, the run multiplier, jump strength and crouch speed are set in
+`src/config.js`. Key bindings are set in `src/input.js`.
 
 ## Look and rendering
 
@@ -57,24 +83,28 @@ See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 ## Project layout
 
 ```
-index.html          Page shell and HUD
-src/main.js         Entry point: checks for WebGL and starts the game
-src/game.js         Renderer, camera, controls, NPCs, hover highlighting and the main loop
-src/character.js    Characters (man / woman outfits), proportions, idle and walk animations
-src/world.js        Assembles the world: sky, fog, sun, terrain, pond, chickee, props, plants
-src/sky.js          Procedural HDR sky / environment map
-src/terrain.js      Height field, ground-layer weights and the splat shader
-src/vegetation.js   Plant variants and instanced scattering
-src/structures.js   The chickee
-src/props.js        Fire pit, kettle, mortar, baskets, woodpile, canoe
-src/interaction.js  Hover highlight and prompt for interactive objects
-src/materials.js    Shared PBR materials and the material audit helper
-src/textures.js     Procedural PBR texture sets
-src/geometry.js     Geometry helpers (merging, strips, lumpy blobs)
-src/noise.js        Deterministic noise functions
-src/layout.js       Where things sit in the camp
-src/style.css       Page and HUD styles
-tests/              Vitest unit tests
+index.html              Page shell, HUD, hover prompt and the How to Play panel container
+src/main.js             Entry point: checks for WebGL and starts the game
+src/game.js             Renderer, camera, controls, player movement, NPCs, hover highlighting and the main loop
+src/config.js           Movement constants (speeds, jump, crouch)
+src/input.js            Keyboard bindings and held-key tracking
+src/movement.js         Character movement: walking, running, jumping and crouching over the terrain
+src/controls-panel.js   The How to Play panel (built from the key bindings)
+src/character.js        Characters (man / woman outfits), proportions, idle and walk animations
+src/world.js            Assembles the world: sky, fog, sun, terrain, pond, chickee, props, plants
+src/sky.js              Procedural HDR sky / environment map
+src/terrain.js          Height field, ground-layer weights and the splat shader
+src/vegetation.js       Plant variants and instanced scattering
+src/structures.js       The chickee
+src/props.js            Fire pit, kettle, mortar, baskets, woodpile, canoe
+src/interaction.js      Hover highlight and prompt for interactive objects
+src/materials.js        Shared PBR materials and the material audit helper
+src/textures.js         Procedural PBR texture sets
+src/geometry.js         Geometry helpers (merging, strips, lumpy blobs)
+src/noise.js            Deterministic noise functions
+src/layout.js           Where things sit in the camp
+src/style.css           Page, HUD, prompt and panel styles
+tests/                  Vitest unit tests
 ```
 
 The man wears a banded knee-length "big shirt", belt and pouch, neckerchief,

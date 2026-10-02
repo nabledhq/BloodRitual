@@ -11,6 +11,9 @@ import {
 import { createWorld, updateWorld, terrainHeight } from './world.js';
 import { Highlighter, collectInteractive, pickInteractive } from './interaction.js';
 import { LAYOUT } from './layout.js';
+import { KeyboardInput } from './input.js';
+import { createMovementState, updateMovement, cameraYaw } from './movement.js';
+import { MOVEMENT } from './config.js';
 
 /** Palette for the villager who walks around the camp. */
 const VILLAGER_PALETTE = Object.freeze({
@@ -123,6 +126,12 @@ export class Game {
     this.pointer = null;
     this.interactive = collectInteractive(this.scene);
 
+    // Keyboard movement over the terrain; the walk cycle advances with distance walked.
+    this.movement = createMovementState(this.character.position, MOVEMENT, terrainHeight);
+    this.walkedDistance = 0;
+    this.input = new KeyboardInput(window);
+    this.input.attach();
+
     this.onResize = this.onResize.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerLeave = this.onPointerLeave.bind(this);
@@ -180,14 +189,57 @@ export class Game {
     return target;
   }
 
-  update() {
+  /**
+   * Advances the game by `delta` seconds (defaults to the time since the
+   * last frame, from the timer).
+   */
+  update(delta) {
     this.timer.update();
+    const step = delta ?? this.timer.getDelta();
     const elapsed = this.timer.getElapsed();
-    updateCharacterIdle(this.character, elapsed);
+    this.updatePlayer(step, elapsed);
     for (const npc of this.npcs) updateNpc(npc, elapsed);
     updateWorld(this.world, elapsed);
     this.controls.update();
     this.updateHover();
+  }
+
+  /**
+   * Moves the character from keyboard input over the terrain, animates it
+   * (walk cycle while moving on the ground, idle otherwise) and keeps the
+   * camera following it.
+   */
+  updatePlayer(delta, elapsed) {
+    const { position } = this.movement;
+    const previousX = position.x;
+    const previousZ = position.z;
+    const previousGround = terrainHeight(previousX, previousZ);
+    const yaw = cameraYaw(this.camera.position, this.controls.target);
+    updateMovement(this.movement, this.input.getIntent(), delta, yaw, MOVEMENT, terrainHeight);
+
+    this.character.position.copy(position);
+    this.character.rotation.y = this.movement.facing;
+    this.character.scale.y = this.movement.height / CHARACTER_HEIGHT;
+
+    const dx = position.x - previousX;
+    const dz = position.z - previousZ;
+    const stride = Math.hypot(dx, dz);
+    if (stride > 0 && this.movement.grounded) {
+      this.walkedDistance += stride;
+      updateCharacterWalk(this.character, this.walkedDistance, elapsed);
+    } else {
+      updateCharacterIdle(this.character, elapsed);
+    }
+
+    // Follow horizontally and with the ground height, but not with jumps or
+    // crouches, so those read clearly on screen.
+    const dy = terrainHeight(position.x, position.z) - previousGround;
+    this.camera.position.x += dx;
+    this.camera.position.y += dy;
+    this.camera.position.z += dz;
+    this.controls.target.x += dx;
+    this.controls.target.y += dy;
+    this.controls.target.z += dz;
   }
 
   start() {
@@ -204,6 +256,7 @@ export class Game {
     this.renderer.domElement.removeEventListener?.('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener?.('pointerleave', this.onPointerLeave);
     this.highlighter.dispose();
+    this.input.detach();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

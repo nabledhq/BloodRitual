@@ -39,6 +39,9 @@ const { Game, walkPathPoint } = await import('../src/game.js');
 const { findNonPbrObjects } = await import('../src/materials.js');
 const { collectInteractive } = await import('../src/interaction.js');
 const { LAYOUT } = await import('../src/layout.js');
+const { MOVEMENT } = await import('../src/config.js');
+const { CHARACTER_HEIGHT } = await import('../src/character.js');
+const { terrainHeight } = await import('../src/world.js');
 
 describe('Game', () => {
   let container;
@@ -55,6 +58,12 @@ describe('Game', () => {
   afterEach(() => {
     delete globalThis.window;
   });
+
+  /** Dispatches a key event through the listener the game registered on window. */
+  function key(type, code) {
+    const call = window.addEventListener.mock.calls.findLast(([name]) => name === type);
+    call[1]({ code, preventDefault: vi.fn() });
+  }
 
   it('puts the character and the world in the scene', () => {
     const game = new Game(container);
@@ -176,12 +185,95 @@ describe('Game', () => {
     }
   });
 
+  it('listens for keyboard input', () => {
+    new Game(container);
+    const events = window.addEventListener.mock.calls.map(([name]) => name);
+    expect(events).toEqual(expect.arrayContaining(['keydown', 'keyup', 'blur']));
+  });
+
+  it('walks the character away from the camera when W is held', () => {
+    const game = new Game(container);
+    const start = game.character.position.clone();
+    const toCharacter = start.clone().sub(game.camera.position).setY(0).normalize();
+    key('keydown', 'KeyW');
+    for (let i = 0; i < 30; i++) game.update(1 / 60);
+    const moved = game.character.position.clone().sub(start);
+    expect(moved.length()).toBeCloseTo(MOVEMENT.walkSpeed * 0.5, 1);
+    expect(moved.normalize().dot(toCharacter)).toBeCloseTo(1, 3);
+  });
+
+  it('keeps the camera following the character', () => {
+    const game = new Game(container);
+    const offset = game.camera.position.clone().sub(game.controls.target);
+    key('keydown', 'ArrowLeft');
+    for (let i = 0; i < 30; i++) game.update(1 / 60);
+    expect(game.controls.target.x).toBeCloseTo(game.character.position.x, 6);
+    expect(game.controls.target.z).toBeCloseTo(game.character.position.z, 6);
+    expect(game.camera.position.clone().sub(game.controls.target).distanceTo(offset)).toBeLessThan(1e-6);
+  });
+
+  it('stops when the keys are released', () => {
+    const game = new Game(container);
+    key('keydown', 'KeyD');
+    game.update(1 / 60);
+    key('keyup', 'KeyD');
+    game.update(1 / 60);
+    const stopped = game.character.position.clone();
+    game.update(1 / 60);
+    expect(game.character.position.equals(stopped)).toBe(true);
+  });
+
+  it('jumps on Space and lowers the character while crouching', () => {
+    const game = new Game(container);
+    key('keydown', 'Space');
+    game.update(1 / 60);
+    expect(game.character.position.y).toBeGreaterThan(0);
+    key('keyup', 'Space');
+    for (let i = 0; i < 120; i++) game.update(1 / 60);
+    expect(game.character.position.y).toBe(0);
+
+    key('keydown', 'KeyC');
+    for (let i = 0; i < 30; i++) game.update(1 / 60);
+    expect(game.character.scale.y).toBeCloseTo(MOVEMENT.crouchHeight / CHARACTER_HEIGHT, 6);
+    key('keyup', 'KeyC');
+    for (let i = 0; i < 30; i++) game.update(1 / 60);
+    expect(game.character.scale.y).toBeCloseTo(1, 6);
+  });
+
+  it('keeps the character on the terrain outside the flat camp, with the camera following', () => {
+    const game = new Game(container);
+    // Start on the hummocks well outside the camp clearing.
+    const x = 18;
+    const z = 14;
+    game.movement.position.set(x, terrainHeight(x, z), z);
+    const offset = game.camera.position.clone().sub(game.controls.target);
+    game.controls.target.set(x, terrainHeight(x, z) + CHARACTER_HEIGHT * 0.6, z);
+    game.camera.position.copy(game.controls.target).add(offset);
+    const heights = new Set();
+    key('keydown', 'KeyW');
+    for (let i = 0; i < 90; i++) {
+      game.update(1 / 60);
+      const p = game.character.position;
+      expect(p.y).toBeCloseTo(terrainHeight(p.x, p.z), 6);
+      heights.add(p.y.toFixed(3));
+    }
+    // The ground really varied along the way, and the walk cycle is playing.
+    expect(heights.size).toBeGreaterThan(5);
+    expect(Math.abs(game.character.getObjectByName('leftLeg').rotation.x)).toBeGreaterThan(0);
+    // The camera keeps the same offset from the target, which tracks the ground.
+    expect(game.camera.position.clone().sub(game.controls.target).distanceTo(offset)).toBeLessThan(1e-6);
+    const p = game.character.position;
+    expect(game.controls.target.y).toBeCloseTo(terrainHeight(p.x, p.z) + CHARACTER_HEIGHT * 0.6, 6);
+  });
+
   it('cleans up on dispose', () => {
     const game = new Game(container);
     game.start();
     game.dispose();
     expect(game.renderer.setAnimationLoop).toHaveBeenLastCalledWith(null);
     expect(window.removeEventListener).toHaveBeenCalledWith('resize', game.onResize);
+    expect(window.removeEventListener).toHaveBeenCalledWith('keydown', game.input.handleKeyDown);
+    expect(window.removeEventListener).toHaveBeenCalledWith('keyup', game.input.handleKeyUp);
     expect(game.renderer.dispose).toHaveBeenCalled();
   });
 });
