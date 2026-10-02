@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCharacter, updateCharacterIdle, CHARACTER_HEIGHT } from './character.js';
 import { createWorld } from './world.js';
+import { KeyboardInput } from './input.js';
+import { createMovementState, updateMovement, cameraYaw } from './movement.js';
 
 /**
  * Owns the renderer, scene, camera and main loop. Create one per page and
@@ -45,6 +47,10 @@ export class Game {
     this.controls.maxPolarAngle = Math.PI * 0.48;
     this.controls.update();
 
+    this.movement = createMovementState(this.character.position);
+    this.input = new KeyboardInput(window);
+    this.input.attach();
+
     this.onResize = this.onResize.bind(this);
     window.addEventListener('resize', this.onResize);
   }
@@ -56,10 +62,36 @@ export class Game {
     this.renderer.setSize(width, height);
   }
 
-  update() {
-    const elapsed = this.clock.getElapsedTime();
+  /**
+   * Advances the game by `delta` seconds (defaults to the time since the
+   * last frame).
+   */
+  update(delta = this.clock.getDelta()) {
+    const elapsed = this.clock.elapsedTime;
+    this.updatePlayer(delta);
     updateCharacterIdle(this.character, elapsed);
     this.controls.update();
+  }
+
+  /** Moves the character from keyboard input and keeps the camera following it. */
+  updatePlayer(delta) {
+    const { position } = this.movement;
+    const previousX = position.x;
+    const previousZ = position.z;
+    const yaw = cameraYaw(this.camera.position, this.controls.target);
+    updateMovement(this.movement, this.input.getIntent(), delta, yaw);
+
+    this.character.position.copy(position);
+    this.character.rotation.y = this.movement.facing;
+    this.character.scale.y = this.movement.height / CHARACTER_HEIGHT;
+
+    // Follow horizontally only, so jumps and crouches read clearly on screen.
+    const dx = position.x - previousX;
+    const dz = position.z - previousZ;
+    this.camera.position.x += dx;
+    this.camera.position.z += dz;
+    this.controls.target.x += dx;
+    this.controls.target.z += dz;
   }
 
   start() {
@@ -73,6 +105,7 @@ export class Game {
   dispose() {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
+    this.input.detach();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

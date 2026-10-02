@@ -38,6 +38,93 @@ body {
   opacity: 0.85;
 }
 
+#controls-panel {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  width: 300px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  color: #fff8e7;
+  background: rgba(43, 30, 18, 0.82);
+  border: 1px solid rgba(241, 196, 15, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  user-select: none;
+}
+
+#controls-panel[hidden] {
+  display: none;
+}
+
+.controls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.controls-header h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+}
+
+.controls-close {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.controls-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.controls-table th,
+.controls-table td {
+  padding: 3px 0;
+  vertical-align: middle;
+}
+
+.controls-table th {
+  font-weight: normal;
+  text-align: left;
+}
+
+.controls-table td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+#controls-panel kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 248, 231, 0.6);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: center;
+  background: rgba(255, 248, 231, 0.1);
+}
+
+.controls-hints {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
 .error {
   position: fixed;
   inset: 0;
