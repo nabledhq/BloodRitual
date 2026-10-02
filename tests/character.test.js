@@ -1,13 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { createCharacter, updateCharacterIdle, CHARACTER_HEIGHT, DEFAULT_PALETTE } from '../src/character.js';
+import {
+  createCharacter,
+  updateCharacterIdle,
+  updateCharacterWalk,
+  measureProportions,
+  CHARACTER_HEIGHT,
+  DEFAULT_PALETTE,
+  WOMAN_PALETTE,
+} from '../src/character.js';
+import { findNonPbrObjects } from '../src/materials.js';
 
 describe('createCharacter', () => {
   it('builds a character with named, animatable body parts', () => {
     const character = createCharacter();
     expect(character).toBeInstanceOf(THREE.Group);
     expect(character.name).toBe('character');
-    for (const part of ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'shirt', 'turban']) {
+    for (const part of [
+      'head', 'skull', 'headwear', 'torso', 'leftArm', 'rightArm', 'leftElbow', 'rightElbow',
+      'leftLeg', 'rightLeg', 'leftKnee', 'rightKnee', 'shirt', 'turban', 'belt', 'neckerchief',
+    ]) {
       expect(character.getObjectByName(part), part).toBeDefined();
     }
   });
@@ -41,6 +53,58 @@ describe('createCharacter', () => {
     expect(meshes.length).toBeGreaterThan(10);
     expect(meshes.filter((m) => m.castShadow).length).toBeGreaterThan(meshes.length / 2);
   });
+
+  it('uses textured PBR fabric and skin materials', () => {
+    const character = createCharacter();
+    expect(findNonPbrObjects(character)).toEqual([]);
+    for (const name of ['turban', 'shirtBand1', 'cranium', 'hand']) {
+      const material = character.getObjectByName(name).material;
+      expect(material.map, name).toBeTruthy();
+      expect(material.normalMap, name).toBeTruthy();
+      expect(material.roughnessMap, name).toBeTruthy();
+    }
+  });
+
+  it('builds a woman in a cape blouse, long skirt and beads', () => {
+    const woman = createCharacter(WOMAN_PALETTE);
+    for (const part of ['skirt', 'cape', 'beads', 'bun', 'skull']) {
+      expect(woman.getObjectByName(part), part).toBeDefined();
+    }
+    expect(woman.getObjectByName('turban')).toBeUndefined();
+    expect(woman.getObjectByName('skirt').children).toHaveLength(WOMAN_PALETTE.skirtBands.length);
+    const box = new THREE.Box3().setFromObject(woman);
+    expect(box.min.y).toBeCloseTo(0, 2);
+    expect(box.max.y).toBeCloseTo(WOMAN_PALETTE.height, 1);
+    expect(findNonPbrObjects(woman)).toEqual([]);
+  });
+});
+
+describe('proportions', () => {
+  // Realistic adults are about 7-8 heads tall; the spec requires the head
+  // to be between 1/8 and 1/6.5 of total height.
+  for (const [name, palette] of [['man', DEFAULT_PALETTE], ['woman', WOMAN_PALETTE]]) {
+    it(`gives the ${name} a realistically sized head`, () => {
+      const m = measureProportions(createCharacter(palette));
+      expect(m.headRatio).toBeGreaterThanOrEqual(1 / 8);
+      expect(m.headRatio).toBeLessThanOrEqual(1 / 6.5);
+      expect(m.headRatioWithHeadwear).toBeGreaterThanOrEqual(1 / 8);
+      expect(m.headRatioWithHeadwear).toBeLessThanOrEqual(1 / 6.5);
+      expect(m.bodyHeight).toBeCloseTo(palette.height, 1);
+    });
+  }
+
+  it('keeps arms and legs at adult lengths', () => {
+    const character = createCharacter();
+    character.updateMatrixWorld(true);
+    const wristY = character.getObjectByName('hand').getWorldPosition(new THREE.Vector3()).y;
+    const kneeY = character.getObjectByName('leftKnee').getWorldPosition(new THREE.Vector3()).y;
+    const height = DEFAULT_PALETTE.height;
+    // Fingertips reach about mid-thigh, knees sit at roughly a quarter of the height.
+    expect(wristY / height).toBeGreaterThan(0.35);
+    expect(wristY / height).toBeLessThan(0.5);
+    expect(kneeY / height).toBeGreaterThan(0.24);
+    expect(kneeY / height).toBeLessThan(0.3);
+  });
 });
 
 describe('updateCharacterIdle', () => {
@@ -71,6 +135,31 @@ describe('updateCharacterIdle', () => {
       const box = new THREE.Box3().setFromObject(character);
       expect(box.min.y).toBeGreaterThan(-0.02);
       expect(box.max.y).toBeLessThan(CHARACTER_HEIGHT + 0.1);
+    }
+  });
+});
+
+describe('updateCharacterWalk', () => {
+  it('swings legs and arms in opposition', () => {
+    const character = createCharacter();
+    updateCharacterWalk(character, 0.35); // quarter stride
+    const leftLeg = character.getObjectByName('leftLeg').rotation.x;
+    const rightLeg = character.getObjectByName('rightLeg').rotation.x;
+    const leftArm = character.getObjectByName('leftArm').rotation.x;
+    expect(leftLeg).toBeLessThan(-0.2);
+    expect(rightLeg).toBeGreaterThan(0.2);
+    // The left arm swings opposite to the left leg.
+    expect(Math.sign(leftArm)).toBe(-Math.sign(leftLeg));
+  });
+
+  it('keeps the feet on or above the ground through the cycle', () => {
+    for (const palette of [DEFAULT_PALETTE, WOMAN_PALETTE]) {
+      const character = createCharacter(palette);
+      for (let d = 0; d < 3; d += 0.1) {
+        updateCharacterWalk(character, d);
+        const box = new THREE.Box3().setFromObject(character);
+        expect(box.min.y).toBeGreaterThan(-0.04);
+      }
     }
   });
 });

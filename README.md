@@ -13,9 +13,11 @@ npm run dev
 ```
 
 Then open the URL Vite prints (usually http://localhost:5173). You will see
-your character standing in a camp in the Florida Everglades next to a chickee.
-A **How to Play** panel listing the controls is shown when the game starts;
-press `H` to hide or show it again.
+your character standing in a camp in the Florida Everglades around 1900: a
+palmetto-thatched chickee, a star fire with an iron kettle, a dugout canoe by
+a tannin-dark pond, cypress, cabbage palms, saw palmetto and sawgrass, and two
+villagers going about their day. A **How to Play** panel listing the controls
+is shown when the game starts; press `H` to hide or show it again.
 
 ## Controls
 
@@ -42,8 +44,32 @@ Tips:
 - Press Space while moving to jump over obstacles.
 - Hold C to crouch.
 
+**Point** at the chickee, fire, mortar, canoe or a villager to highlight it
+and see a short description. Outside the flat camp clearing the character
+follows the height of the terrain.
+
 Walk speed, the run multiplier, jump strength and crouch speed are set in
 `src/config.js`. Key bindings are set in `src/input.js`.
+
+## Look and rendering
+
+The aim is believable, polished realism, not photorealism:
+
+- Physically based materials only (`MeshStandardMaterial` /
+  `MeshPhysicalMaterial`) with albedo, normal and roughness maps.
+- sRGB output, ACES filmic tone mapping and a procedural HDR sky used as both
+  background and image-based environment light.
+- A directional sun with soft (PCF, wide-radius) 2048² shadow maps, plus mild
+  linear fog that matches the hazy horizon.
+- Height-varied terrain that blends grass, dirt and mud with height-based
+  splatting (`src/terrain.js`).
+- Instanced vegetation: every plant type has 2-3 procedural variants and
+  randomised position, rotation, scale and tint.
+- Characters with adult proportions (about 7 heads tall) in layered clothing,
+  with idle and walk animations.
+
+All textures and models are generated in code, so there are no binary assets.
+See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 
 ## Scripts
 
@@ -57,20 +83,37 @@ Walk speed, the run multiplier, jump strength and crouch speed are set in
 ## Project layout
 
 ```
-index.html              Page shell, HUD and the How to Play panel container
+index.html              Page shell, HUD, hover prompt and the How to Play panel container
 src/main.js             Entry point: checks for WebGL and starts the game
-src/game.js             Renderer, camera, controls and the main loop
+src/game.js             Renderer, camera, controls, player movement, NPCs, hover highlighting and the main loop
 src/config.js           Movement constants (speeds, jump, crouch)
 src/input.js            Keyboard bindings and held-key tracking
-src/movement.js         Character movement: walking, running, jumping and crouching
+src/movement.js         Character movement: walking, running, jumping and crouching over the terrain
 src/controls-panel.js   The How to Play panel (built from the key bindings)
-src/character.js        The player character (built from simple shapes) and its idle animation
-src/world.js            Lights, ground, pond, chickee, trees and sawgrass
-src/style.css           Page, HUD and panel styles
+src/character.js        Characters (man / woman outfits), proportions, idle and walk animations
+src/world.js            Assembles the world: sky, fog, sun, terrain, pond, chickee, props, plants
+src/sky.js              Procedural HDR sky / environment map
+src/terrain.js          Height field, ground-layer weights and the splat shader
+src/vegetation.js       Plant variants and instanced scattering
+src/structures.js       The chickee
+src/props.js            Fire pit, kettle, mortar, baskets, woodpile, canoe
+src/interaction.js      Hover highlight and prompt for interactive objects
+src/materials.js        Shared PBR materials and the material audit helper
+src/textures.js         Procedural PBR texture sets
+src/geometry.js         Geometry helpers (merging, strips, lumpy blobs)
+src/noise.js            Deterministic noise functions
+src/layout.js           Where things sit in the camp
+src/style.css           Page, HUD, prompt and panel styles
 tests/                  Vitest unit tests
 ```
 
-All models are built procedurally from three.js primitives, so there are no
-binary assets to download. The character wears a simplified patchwork
-"big shirt", neckerchief and cloth turban, the clothing worn by Seminole men
-in the early 1900s.
+The man wears a banded knee-length "big shirt", belt and pouch, neckerchief,
+cloth turban, leggings and moccasins; the woman wears a cape blouse, a long
+banded skirt and many strands of glass beads. This is a game-art
+interpretation and has not been reviewed by Seminole cultural advisors; that
+review is recommended separately.
+
+To check that nothing in the scene uses an unlit material, call
+`findNonPbrObjects(root)` from `src/materials.js`. The tests do this for the
+whole scene. In the browser console, `seminole.renderer.info.render` shows
+draw calls and triangles.

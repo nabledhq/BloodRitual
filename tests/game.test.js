@@ -34,9 +34,14 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', async () => {
   };
 });
 
-const { Game } = await import('../src/game.js');
+const THREE = await import('three');
+const { Game, walkPathPoint } = await import('../src/game.js');
+const { findNonPbrObjects } = await import('../src/materials.js');
+const { collectInteractive } = await import('../src/interaction.js');
+const { LAYOUT } = await import('../src/layout.js');
 const { MOVEMENT } = await import('../src/config.js');
 const { CHARACTER_HEIGHT } = await import('../src/character.js');
+const { terrainHeight } = await import('../src/world.js');
 
 describe('Game', () => {
   let container;
@@ -97,6 +102,89 @@ describe('Game', () => {
     expect(game.renderer.setSize).toHaveBeenLastCalledWith(1000, 500);
   });
 
+  it('configures shadows, tone mapping and sRGB output', () => {
+    const game = new Game(container);
+    expect(game.renderer.shadowMap.enabled).toBe(true);
+    expect(game.renderer.shadowMap.type).toBe(THREE.PCFShadowMap);
+    expect(game.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
+    expect(game.renderer.outputColorSpace).toBe(THREE.SRGBColorSpace);
+  });
+
+  it('uses no unlit or basic materials anywhere in the scene', () => {
+    const game = new Game(container);
+    let meshes = 0;
+    game.scene.traverse((o) => o.isMesh && meshes++);
+    expect(meshes).toBeGreaterThan(100);
+    expect(findNonPbrObjects(game.scene).map((o) => o.name)).toEqual([]);
+  });
+
+  it('has characters that cast and receive shadows', () => {
+    const game = new Game(container);
+    for (const character of [game.character, ...game.npcs]) {
+      const meshes = [];
+      character.traverse((o) => o.isMesh && meshes.push(o));
+      expect(meshes.some((m) => m.castShadow)).toBe(true);
+      expect(meshes.every((m) => m.receiveShadow)).toBe(true);
+    }
+  });
+
+  it('adds villagers: one idling by the fire and one walking the camp path', () => {
+    const game = new Game(container);
+    const [woman, man] = game.npcs;
+    expect(game.scene.getObjectByName('npcWoman')).toBe(woman);
+    expect(game.scene.getObjectByName('npcMan')).toBe(man);
+    game.start();
+    game.renderer.loop();
+    const p0 = man.position.clone();
+    game.timer.update = () => {};
+    game.timer.getElapsed = () => 2;
+    game.renderer.loop();
+    expect(man.position.distanceTo(p0)).toBeGreaterThan(0.5);
+    const path = LAYOUT.walkPath;
+    const e = Math.hypot((man.position.x - path.x) / path.rx, (man.position.z - path.z) / path.rz);
+    expect(e).toBeCloseTo(1, 5);
+    expect(Math.abs(man.getObjectByName('leftLeg').rotation.x)).toBeGreaterThan(0);
+  });
+
+  it('walks the path facing the direction of travel', () => {
+    const a = walkPathPoint(LAYOUT.walkPath, 1);
+    const b = walkPathPoint(LAYOUT.walkPath, 1.01);
+    const heading = Math.atan2(b.x - a.x, b.z - a.z);
+    expect(Math.cos(heading - a.heading)).toBeGreaterThan(0.99);
+  });
+
+  it('highlights every interactive object and shows its prompt when targeted', () => {
+    const promptElement = { textContent: '', classList: { toggle: vi.fn() } };
+    const game = new Game(container, { promptElement });
+    const targets = collectInteractive(game.scene);
+    expect(targets.map((t) => t.name).sort()).toEqual(['canoe', 'chickee', 'firePit', 'mortar', 'npcMan', 'npcWoman'].sort());
+    for (const target of targets) {
+      const box = new THREE.Box3().setFromObject(target);
+      const centre = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      game.camera.position.copy(centre).add(new THREE.Vector3(0, 0.4, 1).normalize().multiplyScalar(size + 1.5));
+      game.camera.lookAt(centre);
+      game.camera.updateMatrixWorld(true);
+      game.setPointer(0, 0);
+      const original = new Map();
+      target.traverse((o) => o.isMesh && original.set(o, o.material));
+      expect(game.updateHover(), target.name).toBe(target);
+      expect(promptElement.textContent).toContain(target.userData.interactive.label);
+      expect(promptElement.classList.toggle).toHaveBeenLastCalledWith('visible', true);
+      for (const [mesh, material] of original) {
+        expect(mesh.material, mesh.name).not.toBe(material);
+        expect(mesh.material.userData.isHighlight).toBe(true);
+        const glow = mesh.material.emissive.r + mesh.material.emissive.g;
+        const before = material.emissive.r * material.emissiveIntensity + material.emissive.g * material.emissiveIntensity;
+        expect(glow).toBeGreaterThan(before);
+      }
+      game.setPointer(null);
+      expect(game.updateHover()).toBeNull();
+      for (const [mesh, material] of original) expect(mesh.material).toBe(material);
+      expect(promptElement.textContent).toBe('');
+    }
+  });
+
   it('listens for keyboard input', () => {
     new Game(container);
     const events = window.addEventListener.mock.calls.map(([name]) => name);
@@ -150,6 +238,32 @@ describe('Game', () => {
     key('keyup', 'KeyC');
     for (let i = 0; i < 30; i++) game.update(1 / 60);
     expect(game.character.scale.y).toBeCloseTo(1, 6);
+  });
+
+  it('keeps the character on the terrain outside the flat camp, with the camera following', () => {
+    const game = new Game(container);
+    // Start on the hummocks well outside the camp clearing.
+    const x = 18;
+    const z = 14;
+    game.movement.position.set(x, terrainHeight(x, z), z);
+    const offset = game.camera.position.clone().sub(game.controls.target);
+    game.controls.target.set(x, terrainHeight(x, z) + CHARACTER_HEIGHT * 0.6, z);
+    game.camera.position.copy(game.controls.target).add(offset);
+    const heights = new Set();
+    key('keydown', 'KeyW');
+    for (let i = 0; i < 90; i++) {
+      game.update(1 / 60);
+      const p = game.character.position;
+      expect(p.y).toBeCloseTo(terrainHeight(p.x, p.z), 6);
+      heights.add(p.y.toFixed(3));
+    }
+    // The ground really varied along the way, and the walk cycle is playing.
+    expect(heights.size).toBeGreaterThan(5);
+    expect(Math.abs(game.character.getObjectByName('leftLeg').rotation.x)).toBeGreaterThan(0);
+    // The camera keeps the same offset from the target, which tracks the ground.
+    expect(game.camera.position.clone().sub(game.controls.target).distanceTo(offset)).toBeLessThan(1e-6);
+    const p = game.character.position;
+    expect(game.controls.target.y).toBeCloseTo(terrainHeight(p.x, p.z) + CHARACTER_HEIGHT * 0.6, 6);
   });
 
   it('cleans up on dispose', () => {

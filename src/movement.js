@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { MOVEMENT } from './config.js';
 
+/** Ground height used when no terrain is supplied: a flat plane at y = 0. */
+export const flatGround = () => 0;
+
 /**
  * Creates the mutable movement state for a character standing on the
- * ground at `position`.
+ * ground at `position`. `groundAt(x, z)` gives the ground height.
  */
-export function createMovementState(position = new THREE.Vector3(), config = MOVEMENT) {
+export function createMovementState(position = new THREE.Vector3(), config = MOVEMENT, groundAt = flatGround) {
   return {
     position: position.clone(),
     velocity: new THREE.Vector3(),
-    grounded: position.y <= 0,
+    grounded: position.y <= groundAt(position.x, position.z),
     crouching: false,
     height: config.standingHeight,
     facing: 0,
@@ -66,9 +69,10 @@ function turnTowards(angle, target, maxStep) {
 /**
  * Advances `state` by `delta` seconds given an input intent
  * (`{ forward, right, sprint, crouch, jump }`) and the camera yaw.
- * Mutates and returns `state`.
+ * `groundAt(x, z)` gives the ground height; while grounded the character
+ * follows it up and down slopes. Mutates and returns `state`.
  */
-export function updateMovement(state, intent, delta, yaw = 0, config = MOVEMENT) {
+export function updateMovement(state, intent, delta, yaw = 0, config = MOVEMENT, groundAt = flatGround) {
   const dt = Math.min(Math.max(delta, 0), config.maxStep);
 
   state.crouching = Boolean(intent.crouch);
@@ -86,17 +90,19 @@ export function updateMovement(state, intent, delta, yaw = 0, config = MOVEMENT)
 
   state.position.addScaledVector(state.velocity, dt);
 
-  if (state.position.y <= 0) {
-    state.position.y = 0;
-    state.velocity.y = 0;
-    state.grounded = true;
-  }
-
   const distance = Math.hypot(state.position.x, state.position.z);
   if (distance > config.boundaryRadius) {
     const scale = config.boundaryRadius / distance;
     state.position.x *= scale;
     state.position.z *= scale;
+  }
+
+  // Land when falling to the ground; stay on it (up and down slopes) while grounded.
+  const ground = groundAt(state.position.x, state.position.z);
+  if (state.grounded || state.position.y <= ground) {
+    state.position.y = ground;
+    state.velocity.y = 0;
+    state.grounded = true;
   }
 
   const targetHeight = state.crouching ? config.crouchHeight : config.standingHeight;
