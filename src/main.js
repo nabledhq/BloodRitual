@@ -13,7 +13,7 @@ function isWebGLAvailable() {
 const container = document.getElementById('game');
 
 if (isWebGLAvailable()) {
-  const game = new Game(container);
+  const game = new Game(container, { promptElement: document.getElementById('prompt') });
   game.start();
   // Exposed for debugging from the browser console.
   window.seminole = game;
