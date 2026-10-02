@@ -15,6 +15,15 @@ export const KEY_BINDINGS = Object.freeze({
 /** Toggles the How to Play panel. */
 export const HELP_KEY = 'KeyH';
 
+/** Talks to the villager the player is standing next to (and closes the menu again). */
+export const INTERACT_KEY = 'KeyE';
+
+/** Toggles the reputation panel. */
+export const REPUTATION_KEY = 'KeyR';
+
+/** Picks an option in the villager menu: the first code picks option 1, and so on. */
+export const MENU_OPTION_KEYS = Object.freeze(['Digit1', 'Digit2', 'Digit3', 'Digit4']);
+
 const ACTION_BY_CODE = new Map(
   Object.entries(KEY_BINDINGS).flatMap(([action, codes]) => codes.map((code) => [code, action])),
 );

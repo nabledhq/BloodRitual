@@ -30,3 +30,11 @@ export const MOVEMENT = Object.freeze({
   /** Longest frame step simulated at once, so a stalled tab cannot fling the player. */
   maxStep: 0.1,
 });
+
+/** Talking to villagers (distances in metres, measured on the ground). */
+export const INTERACTION = Object.freeze({
+  /** The player must be this close to a villager for E to open the menu. */
+  radius: 2.2,
+  /** An open menu closes once the player (or the villager) is further apart than this. */
+  leaveRadius: 3.5,
+});
