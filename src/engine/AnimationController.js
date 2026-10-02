@@ -1,5 +1,5 @@
 import { Animation, AnimationGroup, Quaternion, Vector3 } from '@babylonjs/core';
-import { updateCharacterIdle, updateCharacterWalk } from '../character.js';
+import { updateCharacterIdle, updateCharacterWalk } from '../character-animation.js';
 import { MOVEMENT } from '../config.js';
 import { smoothstep } from '../noise.js';
 

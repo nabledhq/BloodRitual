@@ -4,8 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { Box3, Color, SRGBColorSpace, Vector3 } from '../src/procedural/index.js';
 import {
   createCharacter,
-  updateCharacterIdle,
-  updateCharacterWalk,
   measureProportions,
   measureArmSpan,
   characterMaterials,
@@ -14,6 +12,7 @@ import {
   CHARACTER_HEIGHT,
   PLAYER_PARAMS,
 } from '../src/character.js';
+import { updateCharacterIdle, updateCharacterWalk } from '../src/character-animation.js';
 import { generateCharacterParams, faceVector, bodyVector, VARIANT_NAMES } from '../src/character-params.js';
 import { SURFACE } from '../src/character-materials.js';
 import { findNonPbrObjects } from '../src/materials.js';
