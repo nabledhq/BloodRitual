@@ -37,7 +37,7 @@ function dataTexture(data, size, colorSpace) {
  * Runs `sample(u, v)` for every texel. It must return
  * `{ color: [r, g, b], height, roughness, alpha? }` with values in [0, 1].
  */
-function generateSet(name, sample, { size = TEXTURE_SIZE, normalStrength = 2 } = {}) {
+export function generateSet(name, sample, { size = TEXTURE_SIZE, normalStrength = 2 } = {}) {
   const n = size * size;
   const albedo = new Uint8Array(n * 4);
   const rough = new Uint8Array(n * 4);
@@ -93,16 +93,16 @@ function generateSet(name, sample, { size = TEXTURE_SIZE, normalStrength = 2 } =
 }
 
 // Shorthand for tileable fbm over the unit square.
-function tfbm(u, v, fx, fy, seed, octaves = 4) {
+export function tfbm(u, v, fx, fy, seed, octaves = 4) {
   return fbm(u * fx, v * fy, { period: fx, periodY: fy, seed, octaves });
 }
 
-function tnoise(u, v, fx, fy, seed) {
+export function tnoise(u, v, fx, fy, seed) {
   return valueNoise(u * fx, v * fy, fx, seed, fy);
 }
 
 /** Plain-weave profile used by fabric and basketry. */
-function weave(u, v, count) {
+export function weave(u, v, count) {
   const cu = Math.floor(u * count);
   const cv = Math.floor(v * count);
   const alongU = (cu + cv) % 2 === 0;
