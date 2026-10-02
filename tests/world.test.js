@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import * as THREE from 'three';
+import { Box3, Fog, NoColorSpace, SRGBColorSpace, Scene } from '../src/procedural/index.js';
 import { createWorld, createRng, createChickee, SKY_COLOR, updateWorld } from '../src/world.js';
 import { findNonPbrObjects } from '../src/materials.js';
-import { terrainHeight, groundWeights, applySplatShader, GROUND_LAYERS, WORLD_SIZE } from '../src/terrain.js';
+import { terrainHeight, groundWeights, createTerrainMaterial, GROUND_LAYERS, WORLD_SIZE } from '../src/terrain.js';
 import { PLANT_TYPES } from '../src/vegetation.js';
 import { getTextureSet, TEXTURE_SET_NAMES } from '../src/textures.js';
 import { LAYOUT } from '../src/layout.js';
+import { SUN_DIRECTION } from '../src/sky.js';
 
 describe('createRng', () => {
   it('is deterministic per seed and stays in [0, 1)', () => {
@@ -27,7 +28,7 @@ describe('createWorld', () => {
   let scene;
   let world;
   beforeAll(() => {
-    scene = new THREE.Scene();
+    scene = new Scene();
     world = createWorld(scene);
   });
 
@@ -36,15 +37,18 @@ describe('createWorld', () => {
     for (const name of ['ground', 'pond', 'chickee', 'vegetation', 'trees', 'shrubs', 'grasses', 'props', 'sun', 'skyLight']) {
       expect(world.getObjectByName(name), name).toBeDefined();
     }
-    expect(scene.fog).toBeInstanceOf(THREE.Fog);
+    expect(scene.fog).toBeInstanceOf(Fog);
     expect(scene.fog.color.getHex()).toBe(SKY_COLOR);
   });
 
   it('lights the scene with an HDR sky environment', () => {
-    expect(scene.background).toBeInstanceOf(THREE.DataTexture);
-    expect(scene.background.mapping).toBe(THREE.EquirectangularReflectionMapping);
-    expect(scene.background.type).toBe(THREE.HalfFloatType);
+    expect(scene.background.isSky).toBe(true);
     expect(scene.environment).toBe(scene.background);
+    // HDR: the sun disc is far brighter than 1, the sky above the horizon is blue-ish.
+    const sun = scene.environment.radiance(SUN_DIRECTION);
+    expect(Math.max(...sun)).toBeGreaterThan(10);
+    const zenith = scene.environment.radiance({ x: 0, y: 1, z: 0 });
+    expect(zenith[2]).toBeGreaterThan(zenith[0]);
   });
 
   it('has a sun with soft shadows that terrain, buildings and props receive and cast', () => {
@@ -81,8 +85,8 @@ describe('createWorld', () => {
   });
 
   it('produces the same layout for the same seed', () => {
-    const a = createWorld(new THREE.Scene(), { seed: 7 });
-    const b = createWorld(new THREE.Scene(), { seed: 7 });
+    const a = createWorld(new Scene(), { seed: 7 });
+    const b = createWorld(new Scene(), { seed: 7 });
     const layout = (w) => w.getObjectByName('cypress').userData.instances.map((p) => [p.x, p.z, p.variant]);
     expect(layout(b)).toEqual(layout(a));
   });
@@ -110,7 +114,7 @@ describe('createWorld', () => {
 describe('terrain', () => {
   let ground;
   beforeAll(() => {
-    ground = createWorld(new THREE.Scene()).getObjectByName('ground');
+    ground = createWorld(new Scene()).getObjectByName('ground');
   });
 
   it('has non-flat height variation but a flat camp clearing', () => {
@@ -153,26 +157,18 @@ describe('terrain', () => {
     expect(groundWeights(40, 40)[0]).toBeGreaterThan(0.5);
   });
 
-  it('patches the standard shader to blend the layers', () => {
-    const shader = {
-      uniforms: THREE.UniformsUtils.clone(THREE.ShaderLib.standard.uniforms),
-      vertexShader: THREE.ShaderLib.standard.vertexShader,
-      fragmentShader: THREE.ShaderLib.standard.fragmentShader,
-    };
-    const sets = Object.fromEntries(GROUND_LAYERS.map((n) => [n, getTextureSet(n)]));
-    applySplatShader(shader, sets);
-    expect(shader.vertexShader).toContain('vSplat = splat;');
-    expect(shader.fragmentShader).not.toContain('#include <map_fragment>');
-    expect(shader.fragmentShader).not.toContain('#include <roughnessmap_fragment>');
-    expect(shader.fragmentShader).toContain('gN * 2.0 - 1.0');
-    expect(shader.uniforms.mudMap.value).toBe(sets.mud.map);
+  it('describes the splat layers and tiling for the engine terrain shader', () => {
+    const { splat } = createTerrainMaterial().userData;
+    expect(Object.keys(splat.textures)).toEqual(GROUND_LAYERS);
+    expect(splat.textures.mud.map).toBe(getTextureSet('mud').map);
+    expect(splat.repeat).toBeGreaterThan(10);
   });
 });
 
 describe('vegetation', () => {
   let vegetation;
   beforeAll(() => {
-    vegetation = createWorld(new THREE.Scene()).getObjectByName('vegetation');
+    vegetation = createWorld(new Scene()).getObjectByName('vegetation');
   });
 
   it('has at least two variants of every plant type, all of them used', () => {
@@ -228,7 +224,7 @@ describe('createChickee', () => {
     expect(posts.length).toBeGreaterThanOrEqual(4);
     const platform = chickee.getObjectByName('platform');
     expect(platform.getObjectByName('floor')).toBeDefined();
-    const floorBox = new THREE.Box3().setFromObject(platform.getObjectByName('floor'));
+    const floorBox = new Box3().setFromObject(platform.getObjectByName('floor'));
     expect(floorBox.min.y).toBeGreaterThan(0.5);
     const roof = chickee.getObjectByName('roof');
     for (const name of ['thatchNorth', 'thatchSouth', 'ridgeCap']) expect(roof.getObjectByName(name), name).toBeDefined();
@@ -248,8 +244,8 @@ describe('createChickee', () => {
       expect(box.max.y - box.min.y, name).toBeGreaterThanOrEqual(0.15);
       expect(Math.abs(slope.rotation.x), name).toBeGreaterThan(0.5);
     }
-    const roofBox = new THREE.Box3().setFromObject(chickee.getObjectByName('roof'));
-    const floorBox = new THREE.Box3().setFromObject(chickee.getObjectByName('floor'));
+    const roofBox = new Box3().setFromObject(chickee.getObjectByName('roof'));
+    const floorBox = new Box3().setFromObject(chickee.getObjectByName('floor'));
     expect(roofBox.min.y).toBeGreaterThan(floorBox.max.y + 0.5);
     expect(roofBox.max.y - roofBox.min.y).toBeGreaterThan(1.5);
   });
@@ -265,8 +261,8 @@ describe('procedural textures', () => {
         expect(tex.image.width).toBeLessThanOrEqual(2048);
         expect(tex.image.height).toBeLessThanOrEqual(2048);
       }
-      expect(set.map.colorSpace).toBe(THREE.SRGBColorSpace);
-      expect(set.normalMap.colorSpace).toBe(THREE.NoColorSpace);
+      expect(set.map.colorSpace).toBe(SRGBColorSpace);
+      expect(set.normalMap.colorSpace).toBe(NoColorSpace);
     }
   });
 });

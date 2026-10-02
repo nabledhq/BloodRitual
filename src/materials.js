@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Color, DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, Vector2 } from './procedural/index.js';
 import { getTextureSet, repeatedSet } from './textures.js';
 
 /**
@@ -15,28 +15,28 @@ function textured(setName, { repeat = null, color = 0xffffff, normalScale = 1, p
     color,
     map: set.map,
     normalMap: set.normalMap,
-    normalScale: new THREE.Vector2(normalScale, normalScale),
+    normalScale: new Vector2(normalScale, normalScale),
     roughnessMap: set.roughnessMap,
     roughness: 1,
     metalness: 0,
     ...extra,
   };
-  return physical ? new THREE.MeshPhysicalMaterial(params) : new THREE.MeshStandardMaterial(params);
+  return physical ? new MeshPhysicalMaterial(params) : new MeshStandardMaterial(params);
 }
 
 const FACTORIES = {
-  thatch: () => textured('thatch', { repeat: [2, 1], side: THREE.DoubleSide }),
-  thatchDark: () => textured('thatch', { repeat: [2, 1], color: 0xb8ad96, side: THREE.DoubleSide }),
+  thatch: () => textured('thatch', { repeat: [2, 1], side: DoubleSide }),
+  thatchDark: () => textured('thatch', { repeat: [2, 1], color: 0xb8ad96, side: DoubleSide }),
   log: () => textured('bark', { repeat: [1, 2], color: 0xd9cfc2 }),
   wood: () => textured('wood', { repeat: [1, 1] }),
   pole: () => textured('wood', { repeat: [1, 0.25], color: 0xc9b8a0 }),
   charred: () => textured('charred'),
   palmTrunk: () => textured('bark', { repeat: [2, 6], color: 0xc4b8a6 }),
   cypressBark: () => textured('bark', { repeat: [2, 4], color: 0xe2cdb8 }),
-  frond: () => textured('leaf', { side: THREE.DoubleSide }),
-  frondDead: () => textured('leaf', { side: THREE.DoubleSide, color: 0xc49a6a }),
-  palmetto: () => textured('leaf', { side: THREE.DoubleSide, color: 0xb9c2a0 }),
-  sawgrass: () => textured('blade', { side: THREE.DoubleSide }),
+  frond: () => textured('leaf', { side: DoubleSide }),
+  frondDead: () => textured('leaf', { side: DoubleSide, color: 0xc49a6a }),
+  palmetto: () => textured('leaf', { side: DoubleSide, color: 0xb9c2a0 }),
+  sawgrass: () => textured('blade', { side: DoubleSide }),
   cypressFoliage: () => textured('foliage', { repeat: [2, 2] }),
   stone: () => textured('stone'),
   basket: () => textured('basket', { repeat: [2, 1] }),
@@ -46,7 +46,7 @@ const FACTORIES = {
   blanketBlue: () =>
     textured('fabric', { repeat: 3, color: 0x3c4a5e, physical: true, sheen: 0.6, sheenRoughness: 0.8, sheenColor: 0xb0b8c8 }),
   ember: () =>
-    new THREE.MeshStandardMaterial({
+    new MeshStandardMaterial({
       color: 0x2a140a,
       emissive: 0xff6a1a,
       emissiveIntensity: 2.2,
@@ -54,7 +54,7 @@ const FACTORIES = {
       metalness: 0,
     }),
   flame: () =>
-    new THREE.MeshStandardMaterial({
+    new MeshStandardMaterial({
       color: 0x000000,
       emissive: 0xffa040,
       emissiveIntensity: 3,
@@ -66,7 +66,7 @@ const FACTORIES = {
     }),
   water: () => {
     const water = repeatedSet('water', 6);
-    return new THREE.MeshPhysicalMaterial({
+    return new MeshPhysicalMaterial({
       // Tannin-stained Everglades water: dark tea colour, glossy surface.
       color: 0x27321f,
       roughness: 1,
@@ -74,7 +74,7 @@ const FACTORIES = {
       map: water.map,
       normalMap: water.normalMap,
       roughnessMap: water.roughnessMap,
-      normalScale: new THREE.Vector2(0.35, 0.35),
+      normalScale: new Vector2(0.35, 0.35),
       transparent: true,
       opacity: 0.9,
       clearcoat: 0.6,
@@ -109,7 +109,7 @@ export function fabricMaterial(color) {
       physical: true,
       sheen: 0.5,
       sheenRoughness: 0.7,
-      sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.5),
+      sheenColor: new Color(color).lerp(new Color(0xffffff), 0.5),
     });
     material.name = key;
     cache.set(key, material);
@@ -132,7 +132,7 @@ export function skinMaterial(color) {
 export function detailMaterial(color, roughness = 0.6) {
   const key = `detail:${color}:${roughness}`;
   if (!cache.has(key)) {
-    const material = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 });
+    const material = new MeshStandardMaterial({ color, roughness, metalness: 0 });
     material.name = key;
     cache.set(key, material);
   }

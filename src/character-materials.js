@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Color, DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, Vector2 } from './procedural/index.js';
 import { generateSet, tfbm, tnoise, weave } from './textures.js';
 import { smoothstep, lerp, hash2, valueNoise } from './noise.js';
 
@@ -172,27 +172,16 @@ function repeated(name, rx, ry = rx) {
 
 // ---- Skin shading -----------------------------------------------------------
 
-/** The diffuse line of three.js' physical direct lighting that the skin shader replaces. */
-export const SKIN_DIFFUSE_SOURCE = 'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );';
-
 /**
  * Wrapped, colour-shifted diffuse: light bleeds a little past the
  * terminator, red most of all, approximating subsurface scattering so the
- * skin does not look like plastic.
+ * skin does not look like plastic. Stored as data; the engine maps it onto
+ * Babylon.js' PBR sub-surface translucency (see src/engine/AssetManager.js).
  */
-const SKIN_DIFFUSE_PATCH = `
-	vec3 sssWrap = vec3( 0.42, 0.22, 0.15 );
-	float sssNdL = dot( geometryNormal, directLight.direction );
-	vec3 sssIrradiance = clamp( ( vec3( sssNdL ) + sssWrap ) / ( 1.0 + sssWrap ), 0.0, 1.0 ) * directLight.color;
-	reflectedLight.directDiffuse += sssIrradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );`;
+export const SKIN_SUBSURFACE = Object.freeze({ wrap: Object.freeze([0.42, 0.22, 0.15]) });
 
 export function applySkinShading(material) {
-  material.userData.subsurface = { wrap: [0.42, 0.22, 0.15] };
-  material.onBeforeCompile = (shader) => {
-    const chunk = THREE.ShaderChunk.lights_physical_pars_fragment.replace(SKIN_DIFFUSE_SOURCE, SKIN_DIFFUSE_PATCH);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_pars_fragment>', chunk);
-  };
-  material.customProgramCacheKey = () => 'seminole-skin-sss';
+  material.userData.subsurface = SKIN_SUBSURFACE;
   return material;
 }
 
@@ -235,17 +224,17 @@ export function characterSkinMaterial(tone, ageBucket = 'adult', detail = 0.6) {
   const strength = Math.round(detail * 20) / 20;
   return cached(`skin:${tone}:${ageBucket}:${strength}`, () => {
     const set = repeated(`skin-${ageBucket}`, 3, 3);
-    const material = new THREE.MeshPhysicalMaterial({
+    const material = new MeshPhysicalMaterial({
       color: tone,
       map: set.map,
       normalMap: set.normalMap,
-      normalScale: new THREE.Vector2(strength, strength),
+      normalScale: new Vector2(strength, strength),
       roughnessMap: set.roughnessMap,
       roughness: SURFACE.skin.roughness,
       metalness: 0,
       sheen: SURFACE.skin.sheen,
       sheenRoughness: 0.45,
-      sheenColor: new THREE.Color(0x8a6450),
+      sheenColor: new Color(0x8a6450),
       specularIntensity: 0.6,
       vertexColors: true,
     });
@@ -258,19 +247,19 @@ export function characterSkinMaterial(tone, ageBucket = 'adult', detail = 0.6) {
 export function hairMaterial(color) {
   return cached(`hair:${color}`, () => {
     const set = getCharacterTextureSet('hair');
-    const material = new THREE.MeshPhysicalMaterial({
+    const material = new MeshPhysicalMaterial({
       color,
       map: set.map,
       normalMap: set.normalMap,
       roughnessMap: set.roughnessMap,
       roughness: SURFACE.hair.roughness,
       metalness: 0,
-      normalScale: new THREE.Vector2(0.5, 0.5),
+      normalScale: new Vector2(0.5, 0.5),
       specularIntensity: 0.2,
       envMapIntensity: 0.35,
       alphaTest: 0.4,
       alphaToCoverage: true,
-      side: THREE.DoubleSide,
+      side: DoubleSide,
     });
     return tag(material, 'hair');
   });
@@ -278,7 +267,7 @@ export function hairMaterial(color) {
 
 export function scleraMaterial() {
   return cached('eye:sclera', () =>
-    tag(new THREE.MeshStandardMaterial({ color: 0xe6ddd0, roughness: SURFACE.sclera.roughness, metalness: 0 }), 'sclera'),
+    tag(new MeshStandardMaterial({ color: 0xe6ddd0, roughness: SURFACE.sclera.roughness, metalness: 0 }), 'sclera'),
   );
 }
 
@@ -286,11 +275,11 @@ export function irisMaterial() {
   return cached('eye:iris', () => {
     const set = getCharacterTextureSet('iris');
     return tag(
-      new THREE.MeshStandardMaterial({
+      new MeshStandardMaterial({
         color: 0xffffff,
         map: set.map,
         normalMap: set.normalMap,
-        normalScale: new THREE.Vector2(0.4, 0.4),
+        normalScale: new Vector2(0.4, 0.4),
         roughness: SURFACE.iris.roughness,
         metalness: 0,
         vertexColors: true,
@@ -304,7 +293,7 @@ export function irisMaterial() {
 export function corneaMaterial() {
   return cached('eye:cornea', () =>
     tag(
-      new THREE.MeshPhysicalMaterial({
+      new MeshPhysicalMaterial({
         color: 0xffffff,
         roughness: SURFACE.cornea.roughness,
         metalness: 0,
@@ -324,7 +313,7 @@ function clothMaterial(kind, setName, repeat, extra) {
   return cached(`garment:${kind}`, () => {
     const set = repeated(setName, ...repeat);
     return tag(
-      new THREE.MeshPhysicalMaterial({
+      new MeshPhysicalMaterial({
         color: 0xffffff,
         map: set.map,
         normalMap: set.normalMap,
@@ -344,7 +333,7 @@ export const cottonMaterial = () =>
     roughness: SURFACE.cotton.roughness,
     sheen: SURFACE.cotton.sheen,
     sheenRoughness: 0.7,
-    sheenColor: new THREE.Color(0x8a8070),
+    sheenColor: new Color(0x8a8070),
   });
 
 /** Wool (turbans, sashes, leggings): rougher with a fuzzier sheen. */
@@ -353,7 +342,7 @@ export const woolMaterial = () =>
     roughness: SURFACE.wool.roughness,
     sheen: SURFACE.wool.sheen,
     sheenRoughness: 0.9,
-    sheenColor: new THREE.Color(0x9a9080),
+    sheenColor: new Color(0x9a9080),
   });
 
 /** Smoked buckskin (moccasins, belts, pouches). */
@@ -362,7 +351,7 @@ export const leatherMaterial = () =>
     roughness: SURFACE.leather.roughness,
     sheen: SURFACE.leather.sheen,
     sheenRoughness: 0.5,
-    sheenColor: new THREE.Color(0x60503c),
+    sheenColor: new Color(0x60503c),
   });
 
 /** Strung glass trade beads. */

@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Havok locates its .wasm next to its own module; pre-bundling would move it.
+  optimizeDeps: { exclude: ['@babylonjs/havok'] },
   build: {
-    // three.js alone is ~550 kB minified; that is expected for this game.
-    chunkSizeWarningLimit: 800,
+    // Babylon.js is a large engine; one multi-megabyte chunk is expected for this game.
+    chunkSizeWarningLimit: 8000,
   },
 });

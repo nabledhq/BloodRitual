@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Color, ConeGeometry, CylinderGeometry, Group, InstancedMesh, LatheGeometry, Matrix4, Quaternion, Vector2, Vector3 } from './procedural/index.js';
 import { MeshBuilder, compose, between, blob } from './geometry.js';
 import { getMaterial } from './materials.js';
 import { createRng } from './rng.js';
@@ -11,18 +11,18 @@ import { LAYOUT } from './layout.js';
  * of plants cost only a handful of draw calls.
  */
 
-const UP = new THREE.Vector3(0, 1, 0);
+const UP = new Vector3(0, 1, 0);
 
 /** A palm fan (cabbage palm / saw palmetto): petiole plus radiating leaflets. */
 function addFan(builder, petioleBuilder, rng, { base, yaw, pitch, petiole, leaflets, length, spread, droop, width = 0.05 }) {
-  const forward = new THREE.Vector3(Math.cos(pitch) * Math.sin(yaw), Math.sin(pitch), Math.cos(pitch) * Math.cos(yaw));
+  const forward = new Vector3(Math.cos(pitch) * Math.sin(yaw), Math.sin(pitch), Math.cos(pitch) * Math.cos(yaw));
   const hastula = base.clone().addScaledVector(forward, petiole);
   if (petioleBuilder) {
-    petioleBuilder.addGeometry(new THREE.CylinderGeometry(0.012, 0.02, 1, 5, 1), between(base, hastula, 1));
+    petioleBuilder.addGeometry(new CylinderGeometry(0.012, 0.02, 1, 5, 1), between(base, hastula, 1));
   }
-  const side = new THREE.Vector3().crossVectors(forward, UP).normalize();
+  const side = new Vector3().crossVectors(forward, UP).normalize();
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
-  const lift = new THREE.Vector3().crossVectors(side, forward).normalize();
+  const lift = new Vector3().crossVectors(side, forward).normalize();
   for (let i = 0; i < leaflets; i++) {
     const a = (i / (leaflets - 1) - 0.5) * spread + (rng() - 0.5) * 0.06;
     const dir = forward.clone().multiplyScalar(Math.cos(a)).addScaledVector(side, Math.sin(a)).addScaledVector(lift, 0.3 * Math.cos(a));
@@ -34,7 +34,7 @@ function addFan(builder, petioleBuilder, rng, { base, yaw, pitch, petiole, leafl
       const t = k / 3;
       points.push(hastula.clone().addScaledVector(dir, len * t).addScaledVector(UP, -sag * len * t * t));
     }
-    const sideDir = new THREE.Vector3().crossVectors(dir, UP).normalize();
+    const sideDir = new Vector3().crossVectors(dir, UP).normalize();
     if (sideDir.lengthSq() < 1e-6) sideDir.copy(side);
     builder.addStrip(points, sideDir, (t) => len * width * (t < 0.2 ? 0.3 + t * 3.5 : 1 - (t - 0.2) * 1.15));
   }
@@ -51,9 +51,9 @@ function cypressVariant(seed, { height, crown, spread }) {
   for (let i = 0; i <= 12; i++) {
     const t = i / 12;
     const r = r0 * (1 + 1.4 * Math.exp(-t * 14)) * (1 - 0.8 * t) + 0.02;
-    profile.push(new THREE.Vector2(r, t * height));
+    profile.push(new Vector2(r, t * height));
   }
-  bark.addGeometry(new THREE.LatheGeometry(profile, 10));
+  bark.addGeometry(new LatheGeometry(profile, 10));
 
   // Cypress knees poking out of the ground around the trunk.
   const knees = 3 + Math.floor(rng() * 4);
@@ -61,7 +61,7 @@ function cypressVariant(seed, { height, crown, spread }) {
     const a = rng() * Math.PI * 2;
     const d = 0.7 + rng() * 0.9;
     const h = 0.15 + rng() * 0.3;
-    bark.addGeometry(new THREE.ConeGeometry(0.07 + rng() * 0.05, h, 6), compose([Math.cos(a) * d, h / 2 - 0.03, Math.sin(a) * d], [rng() * 0.3, 0, rng() * 0.3]));
+    bark.addGeometry(new ConeGeometry(0.07 + rng() * 0.05, h, 6), compose([Math.cos(a) * d, h / 2 - 0.03, Math.sin(a) * d], [rng() * 0.3, 0, rng() * 0.3]));
   }
 
   // Branches and feathery foliage clumps on the upper trunk.
@@ -71,9 +71,9 @@ function cypressVariant(seed, { height, crown, spread }) {
     const y = t * height;
     const a = i * 2.4 + rng() * 0.6;
     const reach = spread * (1.1 - t * 0.7) * (0.7 + rng() * 0.5);
-    const start = new THREE.Vector3(0, y, 0);
-    const end = new THREE.Vector3(Math.cos(a) * reach, y + reach * 0.45, Math.sin(a) * reach);
-    bark.addGeometry(new THREE.CylinderGeometry(0.025, 0.06, 1, 5), between(start, end));
+    const start = new Vector3(0, y, 0);
+    const end = new Vector3(Math.cos(a) * reach, y + reach * 0.45, Math.sin(a) * reach);
+    bark.addGeometry(new CylinderGeometry(0.025, 0.06, 1, 5), between(start, end));
     const size = crown * (0.75 + rng() * 0.5) * (1.15 - t * 0.4);
     const clump = blob(size, { detail: 1, amount: 0.5, seed: seed * 7 + i });
     leaves.addGeometry(clump, compose([end.x, end.y + size * 0.2, end.z], [0, rng() * 3, 0], [1.2, 0.62, 1.2]));
@@ -96,9 +96,9 @@ function cabbagePalmVariant(seed, { height, lean, fans }) {
   const profile = [];
   for (let i = 0; i <= 10; i++) {
     const t = i / 10;
-    profile.push(new THREE.Vector2(0.19 + 0.04 * Math.exp(-t * 8) + 0.03 * t * t, t * height));
+    profile.push(new Vector2(0.19 + 0.04 * Math.exp(-t * 8) + 0.03 * t * t, t * height));
   }
-  const trunkGeometry = new THREE.LatheGeometry(profile, 9);
+  const trunkGeometry = new LatheGeometry(profile, 9);
   // Bend the trunk so it leans gently, as wind-swept cabbage palms do.
   const pos = trunkGeometry.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -107,7 +107,7 @@ function cabbagePalmVariant(seed, { height, lean, fans }) {
   }
   trunkGeometry.computeVertexNormals();
   trunk.addGeometry(trunkGeometry);
-  const crownTop = new THREE.Vector3(lean * height, height, 0);
+  const crownTop = new Vector3(lean * height, height, 0);
   // Ragged leaf boots just below the crown.
   trunk.addGeometry(blob(0.32, { detail: 1, amount: 0.6, seed }), compose([crownTop.x, height - 0.15, 0], [0, 0, 0], [1, 1.4, 1]));
 
@@ -115,7 +115,7 @@ function cabbagePalmVariant(seed, { height, lean, fans }) {
     const yaw = (i / fans) * Math.PI * 2 * 2.618 + rng() * 0.4;
     const pitch = 0.9 - (i / fans) * 1.25 + (rng() - 0.5) * 0.2;
     addFan(fronds, fronds, rng, {
-      base: crownTop.clone().add(new THREE.Vector3(0, 0.1, 0)),
+      base: crownTop.clone().add(new Vector3(0, 0.1, 0)),
       yaw,
       pitch,
       petiole: 0.9 + rng() * 0.5,
@@ -129,7 +129,7 @@ function cabbagePalmVariant(seed, { height, lean, fans }) {
   // A few dead, hanging fronds forming the beginnings of a skirt.
   for (let i = 0; i < 4; i++) {
     addFan(dead, dead, rng, {
-      base: crownTop.clone().add(new THREE.Vector3(0, -0.1, 0)),
+      base: crownTop.clone().add(new Vector3(0, -0.1, 0)),
       yaw: rng() * Math.PI * 2,
       pitch: -1.1 - rng() * 0.3,
       petiole: 0.5,
@@ -153,7 +153,7 @@ function palmettoVariant(seed, { fans, size }) {
   for (let i = 0; i < fans; i++) {
     const yaw = rng() * Math.PI * 2;
     addFan(leaves, leaves, rng, {
-      base: new THREE.Vector3((rng() - 0.5) * 0.3, 0.02, (rng() - 0.5) * 0.3),
+      base: new Vector3((rng() - 0.5) * 0.3, 0.02, (rng() - 0.5) * 0.3),
       yaw,
       pitch: 0.55 + rng() * 0.6,
       petiole: size * (0.5 + rng() * 0.5),
@@ -172,16 +172,16 @@ function tuftVariant(seed, { blades, height, splay, width, material }) {
   const builder = new MeshBuilder();
   for (let i = 0; i < blades; i++) {
     const a = rng() * Math.PI * 2;
-    const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const out = new Vector3(Math.cos(a), 0, Math.sin(a));
     const base = out.clone().multiplyScalar(rng() * 0.08);
     const h = height * (0.6 + rng() * 0.5);
     const tilt = splay * (0.3 + rng() * 0.7);
     const points = [];
     for (let k = 0; k <= 3; k++) {
       const t = k / 3;
-      points.push(base.clone().addScaledVector(out, tilt * h * t * t).add(new THREE.Vector3(0, h * t * (1 - tilt * 0.3 * t), 0)));
+      points.push(base.clone().addScaledVector(out, tilt * h * t * t).add(new Vector3(0, h * t * (1 - tilt * 0.3 * t), 0)));
     }
-    const side = new THREE.Vector3(-out.z, 0, out.x).applyAxisAngle(out, (rng() - 0.5) * 0.8);
+    const side = new Vector3(-out.z, 0, out.x).applyAxisAngle(out, (rng() - 0.5) * 0.8);
     builder.addStrip(points, side, (t) => width * (1 - t * 0.92));
   }
   return [{ geometry: builder.build(), material }];
@@ -305,21 +305,21 @@ function placeType(type, def, rng) {
 }
 
 function buildInstanced(type, def, variants, instances) {
-  const group = new THREE.Group();
+  const group = new Group();
   group.name = type;
-  const matrix = new THREE.Matrix4();
-  const color = new THREE.Color();
+  const matrix = new Matrix4();
+  const color = new Color();
   variants.forEach((parts, variantIndex) => {
     const mine = instances.filter((p) => p.variant === variantIndex);
     if (mine.length === 0) return;
     for (const part of parts) {
-      const mesh = new THREE.InstancedMesh(part.geometry, getMaterial(part.material), mine.length);
+      const mesh = new InstancedMesh(part.geometry, getMaterial(part.material), mine.length);
       mesh.name = `${type}-v${variantIndex}-${part.material}`;
       mine.forEach((p, i) => {
         matrix.compose(
-          new THREE.Vector3(p.x, p.y, p.z),
-          new THREE.Quaternion().setFromAxisAngle(UP, p.rotationY),
-          new THREE.Vector3(p.scale, p.scale, p.scale),
+          new Vector3(p.x, p.y, p.z),
+          new Quaternion().setFromAxisAngle(UP, p.rotationY),
+          new Vector3(p.scale, p.scale, p.scale),
         );
         mesh.setMatrixAt(i, matrix);
         color.setRGB(p.tint, p.tint * (0.97 + (p.tint - 0.86) * 0.15), p.tint * 0.95);
@@ -343,7 +343,7 @@ function buildInstanced(type, def, variants, instances) {
  */
 export function createVegetation(seed = 1907) {
   const rng = createRng(seed);
-  const vegetation = new THREE.Group();
+  const vegetation = new Group();
   vegetation.name = 'vegetation';
   const groups = {};
   for (const [type, spec] of Object.entries(PLANT_TYPES)) {
@@ -351,7 +351,7 @@ export function createVegetation(seed = 1907) {
     const def = { ...spec, variantCount: variants.length };
     const instances = placeType(type, def, rng);
     if (!groups[spec.group]) {
-      groups[spec.group] = new THREE.Group();
+      groups[spec.group] = new Group();
       groups[spec.group].name = spec.group;
       vegetation.add(groups[spec.group]);
     }

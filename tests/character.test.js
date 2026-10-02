@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as THREE from 'three';
+import { Box3, Color, SRGBColorSpace, Vector3 } from '../src/procedural/index.js';
 import {
   createCharacter,
-  updateCharacterIdle,
-  updateCharacterWalk,
   measureProportions,
   measureArmSpan,
   characterMaterials,
@@ -14,8 +12,9 @@ import {
   CHARACTER_HEIGHT,
   PLAYER_PARAMS,
 } from '../src/character.js';
+import { updateCharacterIdle, updateCharacterWalk } from '../src/character-animation.js';
 import { generateCharacterParams, faceVector, bodyVector, VARIANT_NAMES } from '../src/character-params.js';
-import { SKIN_DIFFUSE_SOURCE, SURFACE } from '../src/character-materials.js';
+import { SURFACE } from '../src/character-materials.js';
 import { findNonPbrObjects } from '../src/materials.js';
 
 const ADULTS = ['man', 'woman', 'elderMan', 'elderWoman'];
@@ -85,8 +84,8 @@ describe('generateCharacterParams', () => {
 
   it('uses Seminole skin tones: medium to deep warm browns', () => {
     for (let seed = 0; seed < 20; seed++) {
-      const tone = new THREE.Color(generateCharacterParams(seed, 'man').skin.tone);
-      const hsl = tone.getHSL({}, THREE.SRGBColorSpace);
+      const tone = new Color(generateCharacterParams(seed, 'man').skin.tone);
+      const hsl = tone.getHSL({}, SRGBColorSpace);
       expect(hsl.h).toBeGreaterThan(0.03);
       expect(hsl.h).toBeLessThan(0.1);
       expect(hsl.l).toBeGreaterThan(0.2);
@@ -150,8 +149,8 @@ describe('anatomy and proportions', () => {
     const character = createCharacter(params);
     character.updateMatrixWorld(true);
     const H = params.body.height;
-    const knee = character.getObjectByName('leftKnee').getWorldPosition(new THREE.Vector3()).y;
-    const hand = new THREE.Box3().setFromObject(character.getObjectByName('leftHand'), true);
+    const knee = character.getObjectByName('leftKnee').getWorldPosition(new Vector3()).y;
+    const hand = new Box3().setFromObject(character.getObjectByName('leftHand'), true);
     expect(knee / H).toBeGreaterThan(0.24);
     expect(knee / H).toBeLessThan(0.3);
     // Fingertips reach about mid-thigh.
@@ -216,12 +215,10 @@ describe('face, skin, hair and eyes', () => {
     expect(old.normalMap.image).not.toBe(young.normalMap.image);
     expect(young.vertexColors).toBe(true);
     expect(character.getObjectByName('skull-skin').geometry.attributes.color).toBeTruthy();
-    // The subsurface-like wrap lighting patches a line that must exist in three.js.
-    expect(THREE.ShaderChunk.lights_physical_pars_fragment).toContain(SKIN_DIFFUSE_SOURCE);
-    const shader = { fragmentShader: '#include <lights_physical_pars_fragment>' };
-    young.onBeforeCompile(shader);
-    expect(shader.fragmentShader).toContain('sssWrap');
-    expect(shader.fragmentShader).not.toContain(SKIN_DIFFUSE_SOURCE);
+    // Subsurface-like wrap lighting, red shifted (red bleeds furthest).
+    const { wrap } = young.userData.subsurface;
+    expect(wrap[0]).toBeGreaterThan(wrap[1]);
+    expect(wrap[1]).toBeGreaterThan(wrap[2]);
   });
 
   it('builds hair from alpha-tested strand cards and layers, not a solid helmet', () => {
@@ -260,15 +257,15 @@ describe('clothing and accessories', () => {
     expect(items.has('turban')).toBe(false);
     expect(params.clothing.beadStrands).toBeGreaterThanOrEqual(10);
     // The skirt reaches the ankles.
-    const skirt = new THREE.Box3().setFromObject(woman.getObjectByName('garments-cotton'), true);
+    const skirt = new Box3().setFromObject(woman.getObjectByName('garments-cotton'), true);
     expect(skirt.min.y).toBeLessThan(params.body.height * 0.08);
   });
 
   it('scales beads to the body', () => {
     const params = generateCharacterParams(3, 'woman');
     const beads = createCharacter(params).getObjectByName('garments-beads');
-    const box = new THREE.Box3().setFromObject(beads, true);
-    const size = box.getSize(new THREE.Vector3());
+    const box = new Box3().setFromObject(beads, true);
+    const size = box.getSize(new Vector3());
     // A necklace collar a little wider than the neck, not a hoop.
     expect(size.x).toBeGreaterThan(params.body.height * 0.08);
     expect(size.x).toBeLessThan(params.body.height * 0.25);
@@ -326,8 +323,8 @@ describe('updateCharacterIdle', () => {
       expect(character.getObjectByName(`${side}Elbow`).rotation.x).toBeLessThan(-0.05);
     }
     character.updateMatrixWorld(true);
-    const hand = new THREE.Box3().setFromObject(character.getObjectByName('rightHand'), true);
-    const shoulder = character.getObjectByName('rightArm').getWorldPosition(new THREE.Vector3());
+    const hand = new Box3().setFromObject(character.getObjectByName('rightHand'), true);
+    const shoulder = character.getObjectByName('rightArm').getWorldPosition(new Vector3());
     expect(hand.max.y).toBeLessThan(shoulder.y - 0.3);
   });
 
@@ -373,7 +370,7 @@ describe('updateCharacterIdle', () => {
       const top = measureProportions(character).totalHeight;
       for (let t = 0; t < 20; t += 0.73) {
         updateCharacterIdle(character, t);
-        const box = new THREE.Box3().setFromObject(character, true);
+        const box = new Box3().setFromObject(character, true);
         expect(box.min.y, variant).toBeGreaterThan(-0.02);
         expect(box.max.y, variant).toBeLessThan(top + 0.05);
       }
@@ -415,7 +412,7 @@ describe('updateCharacterWalk', () => {
       for (const run of [0, 1]) {
         for (let d = 0; d < 3; d += 0.1) {
           updateCharacterWalk(character, d, 0, { run });
-          const box = new THREE.Box3().setFromObject(character, true);
+          const box = new Box3().setFromObject(character, true);
           expect(box.min.y, `${variant} run=${run} d=${d}`).toBeGreaterThan(-0.03);
         }
       }

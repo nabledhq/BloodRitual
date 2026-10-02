@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { BoxGeometry, CylinderGeometry, Group, LatheGeometry, Mesh, TorusGeometry, Vector2, Vector3 } from './procedural/index.js';
 import { MeshBuilder, compose, between } from './geometry.js';
 import { getMaterial } from './materials.js';
 import { createRng } from './rng.js';
@@ -18,7 +18,7 @@ export const CHICKEE = Object.freeze({
 });
 
 function mesh(geometry, material, name, { cast = true, receive = true } = {}) {
-  const m = new THREE.Mesh(geometry, typeof material === 'string' ? getMaterial(material) : material);
+  const m = new Mesh(geometry, typeof material === 'string' ? getMaterial(material) : material);
   m.name = name;
   m.castShadow = cast;
   m.receiveShadow = receive;
@@ -30,9 +30,9 @@ function postGeometry(rng, height, radius) {
   const profile = [];
   for (let i = 0; i <= 8; i++) {
     const t = i / 8;
-    profile.push(new THREE.Vector2(radius * (1.08 - 0.18 * t) * (0.96 + rng() * 0.08), t * height));
+    profile.push(new Vector2(radius * (1.08 - 0.18 * t) * (0.96 + rng() * 0.08), t * height));
   }
-  const geometry = new THREE.LatheGeometry(profile, 9);
+  const geometry = new LatheGeometry(profile, 9);
   // Natural logs are never perfectly straight.
   const bendX = (rng() - 0.5) * 0.06;
   const bendZ = (rng() - 0.5) * 0.06;
@@ -59,7 +59,7 @@ function thatchSlopeGeometry(slopeLength, seed) {
   const builder = new MeshBuilder();
   const courseWidth = (slopeLength / thatchCourses) * 1.45;
   for (let c = 0; c < thatchCourses; c++) {
-    const box = new THREE.BoxGeometry(length, thatchThickness, courseWidth, 48, 1, 2);
+    const box = new BoxGeometry(length, thatchThickness, courseWidth, 48, 1, 2);
     const pos = box.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -94,14 +94,14 @@ function thatchSlopeGeometry(slopeLength, seed) {
 export function createChickee(seed = 31) {
   const rng = createRng(seed);
   const { width, depth, eaveHeight, ridgeHeight, platformHeight, overhang, gableOverhang } = CHICKEE;
-  const chickee = new THREE.Group();
+  const chickee = new Group();
   chickee.name = 'chickee';
   const hw = width / 2;
   const hd = depth / 2;
   const postXs = [-hw, 0, hw];
 
   // Posts.
-  const posts = new THREE.Group();
+  const posts = new Group();
   posts.name = 'posts';
   let index = 0;
   for (const x of postXs) {
@@ -115,14 +115,14 @@ export function createChickee(seed = 31) {
 
   // Raised platform: sills lashed inside the posts, cross joists and a deck
   // of split cypress boards.
-  const platform = new THREE.Group();
+  const platform = new Group();
   platform.name = 'platform';
   const sills = new MeshBuilder();
   for (const z of [-hd + 0.12, hd - 0.12]) {
-    sills.addGeometry(new THREE.CylinderGeometry(0.075, 0.075, 1, 8), between(new THREE.Vector3(-hw - 0.15, platformHeight - 0.12, z), new THREE.Vector3(hw + 0.15, platformHeight - 0.1, z)));
+    sills.addGeometry(new CylinderGeometry(0.075, 0.075, 1, 8), between(new Vector3(-hw - 0.15, platformHeight - 0.12, z), new Vector3(hw + 0.15, platformHeight - 0.1, z)));
   }
   for (const x of postXs) {
-    sills.addGeometry(new THREE.CylinderGeometry(0.06, 0.06, 1, 8), between(new THREE.Vector3(x, platformHeight - 0.2, -hd - 0.1), new THREE.Vector3(x, platformHeight - 0.2, hd + 0.1)));
+    sills.addGeometry(new CylinderGeometry(0.06, 0.06, 1, 8), between(new Vector3(x, platformHeight - 0.2, -hd - 0.1), new Vector3(x, platformHeight - 0.2, hd + 0.1)));
   }
   platform.add(mesh(sills.build(), 'log', 'sills'));
 
@@ -131,7 +131,7 @@ export function createChickee(seed = 31) {
   while (x < hw - 0.1) {
     const w = 0.15 + rng() * 0.06;
     deck.addGeometry(
-      new THREE.BoxGeometry(w - 0.012, 0.055, depth - 0.12),
+      new BoxGeometry(w - 0.012, 0.055, depth - 0.12),
       compose([x + w / 2, platformHeight - 0.01 + rng() * 0.012, (rng() - 0.5) * 0.04], [0, (rng() - 0.5) * 0.02, (rng() - 0.5) * 0.04]),
     );
     x += w;
@@ -142,14 +142,14 @@ export function createChickee(seed = 31) {
 
   // Roof frame: eave plates, tie beams, king posts, ridge, rafters, purlins.
   const frame = new MeshBuilder();
-  const pole = (a, b, r) => frame.addGeometry(new THREE.CylinderGeometry(r * 0.85, r, 1, 7), between(a, b));
+  const pole = (a, b, r) => frame.addGeometry(new CylinderGeometry(r * 0.85, r, 1, 7), between(a, b));
   const plateY = eaveHeight + 0.02;
-  for (const z of [-hd, hd]) pole(new THREE.Vector3(-hw - 0.3, plateY, z), new THREE.Vector3(hw + 0.3, plateY, z), 0.07);
+  for (const z of [-hd, hd]) pole(new Vector3(-hw - 0.3, plateY, z), new Vector3(hw + 0.3, plateY, z), 0.07);
   for (const px of postXs) {
-    pole(new THREE.Vector3(px, plateY + 0.1, -hd - 0.2), new THREE.Vector3(px, plateY + 0.1, hd + 0.2), 0.065);
-    pole(new THREE.Vector3(px, plateY + 0.1, 0), new THREE.Vector3(px, ridgeHeight, 0), 0.06);
+    pole(new Vector3(px, plateY + 0.1, -hd - 0.2), new Vector3(px, plateY + 0.1, hd + 0.2), 0.065);
+    pole(new Vector3(px, plateY + 0.1, 0), new Vector3(px, ridgeHeight, 0), 0.06);
   }
-  pole(new THREE.Vector3(-hw - gableOverhang, ridgeHeight, 0), new THREE.Vector3(hw + gableOverhang, ridgeHeight, 0), 0.075);
+  pole(new Vector3(-hw - gableOverhang, ridgeHeight, 0), new Vector3(hw + gableOverhang, ridgeHeight, 0), 0.075);
 
   const run = hd + overhang;
   const pitch = Math.atan2(ridgeHeight - eaveHeight, hd);
@@ -158,14 +158,14 @@ export function createChickee(seed = 31) {
   for (let i = 0; i < rafterCount; i++) {
     const rx = -hw - 0.2 + (i / (rafterCount - 1)) * (width + 0.4);
     for (const side of [-1, 1]) {
-      pole(new THREE.Vector3(rx, ridgeHeight + 0.05, 0), new THREE.Vector3(rx, ridgeHeight - eaveDrop, side * run), 0.04);
+      pole(new Vector3(rx, ridgeHeight + 0.05, 0), new Vector3(rx, ridgeHeight - eaveDrop, side * run), 0.04);
     }
   }
   for (let p = 1; p <= 3; p++) {
     const t = p / 4;
     for (const side of [-1, 1]) {
       const y = ridgeHeight - eaveDrop * t + 0.06;
-      pole(new THREE.Vector3(-hw - 0.3, y, side * run * t), new THREE.Vector3(hw + 0.3, y, side * run * t), 0.03);
+      pole(new Vector3(-hw - 0.3, y, side * run * t), new Vector3(hw + 0.3, y, side * run * t), 0.03);
     }
   }
   const frameMesh = mesh(frame.build(), 'pole', 'frame');
@@ -175,18 +175,18 @@ export function createChickee(seed = 31) {
   for (const px of postXs) {
     for (const z of [-hd, hd]) {
       for (const y of [plateY, platformHeight - 0.12]) {
-        lashings.addGeometry(new THREE.TorusGeometry(0.11, 0.022, 5, 10), compose([px, y, z], [Math.PI / 2, 0, 0], [1, 1, 1.6]));
+        lashings.addGeometry(new TorusGeometry(0.11, 0.022, 5, 10), compose([px, y, z], [Math.PI / 2, 0, 0], [1, 1, 1.6]));
       }
     }
   }
-  const frameGroup = new THREE.Group();
+  const frameGroup = new Group();
   frameGroup.name = 'frame';
   frameGroup.add(frameMesh, mesh(lashings.build(), 'thatchDark', 'lashings'));
   chickee.add(frameGroup);
 
   // Thatch: two thick, layered slopes plus a rounded ridge cap held down by
   // crossed poles.
-  const roof = new THREE.Group();
+  const roof = new Group();
   roof.name = 'roof';
   const slopeLength = Math.hypot(run, eaveDrop) + 0.1;
   for (const side of [-1, 1]) {
@@ -196,7 +196,7 @@ export function createChickee(seed = 31) {
     slope.rotation.set(side * pitch, side > 0 ? 0 : Math.PI, 0);
     roof.add(slope);
   }
-  const cap = new THREE.CylinderGeometry(0.3, 0.3, width + gableOverhang * 2 + 0.1, 12, 1);
+  const cap = new CylinderGeometry(0.3, 0.3, width + gableOverhang * 2 + 0.1, 12, 1);
   cap.rotateZ(Math.PI / 2);
   cap.scale(1, 0.62, 1);
   const ridgeCap = mesh(cap, 'thatchDark', 'ridgeCap');
@@ -207,8 +207,8 @@ export function createChickee(seed = 31) {
     const px = -hw + (i / 4) * width;
     for (const lean of [-1, 1]) {
       ridgePoles.addGeometry(
-        new THREE.CylinderGeometry(0.03, 0.035, 1, 6),
-        between(new THREE.Vector3(px + lean * 0.12, ridgeHeight + 0.05, -0.75), new THREE.Vector3(px - lean * 0.12, ridgeHeight + 0.75, 0.55)),
+        new CylinderGeometry(0.03, 0.035, 1, 6),
+        between(new Vector3(px + lean * 0.12, ridgeHeight + 0.05, -0.75), new Vector3(px - lean * 0.12, ridgeHeight + 0.75, 0.55)),
       );
     }
   }
@@ -216,15 +216,15 @@ export function createChickee(seed = 31) {
   chickee.add(roof);
 
   // Belongings on the platform: a rolled sleeping mat and folded blankets.
-  const belongings = new THREE.Group();
+  const belongings = new Group();
   belongings.name = 'belongings';
-  const mat = mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.4, 14), 'basket', 'sleepingMat');
+  const mat = mesh(new CylinderGeometry(0.16, 0.16, 1.4, 14), 'basket', 'sleepingMat');
   mat.rotation.z = Math.PI / 2;
   mat.position.set(-0.9, platformHeight + 0.18, -0.9);
-  const blanket = mesh(new THREE.BoxGeometry(0.9, 0.18, 0.6, 4, 2, 4), 'blanket', 'blankets');
+  const blanket = mesh(new BoxGeometry(0.9, 0.18, 0.6, 4, 2, 4), 'blanket', 'blankets');
   blanket.position.set(1.0, platformHeight + 0.1, -0.7);
   blanket.rotation.y = 0.2;
-  const blanket2 = mesh(new THREE.BoxGeometry(0.8, 0.1, 0.5), 'blanketBlue', 'blanketsTop');
+  const blanket2 = mesh(new BoxGeometry(0.8, 0.1, 0.5), 'blanketBlue', 'blanketsTop');
   blanket2.position.set(1.0, platformHeight + 0.24, -0.72);
   blanket2.rotation.y = 0.05;
   belongings.add(mat, blanket, blanket2);

@@ -31,8 +31,8 @@ repository (0 MB added).
 | Hair strands (alpha-tested cards and scalp layer) | `src/character-materials.js` | 256×256 RGBA8 with alpha | albedo + alpha, normal, roughness |
 | Garment cotton (weave, folds, seams, stitching), wool, buckskin, glass beads | `src/character-materials.js` | 256×256 RGBA8, tileable | albedo, normal, roughness |
 | Iris | `src/character-materials.js` | 128×128 RGBA8 | albedo, normal, roughness |
-| Sky / environment light | `src/sky.js` | 512×256 RGBA16F equirectangular HDR | radiance |
-| Terrain, chickee, plants, props, characters | `src/terrain.js`, `src/structures.js`, `src/vegetation.js`, `src/props.js`, `src/character.js`, `src/character-geometry.js` | procedural geometry | n/a |
+| Sky / environment light | `src/sky.js` (sampled by `src/engine/SceneManager.js`) | 6×128² RGBA32F cube map (HDR) | radiance |
+| Terrain, chickee, plants, props, characters | `src/terrain.js`, `src/structures.js`, `src/vegetation.js`, `src/props.js`, `src/character.js`, `src/character-head.js`, `src/character-geometry.js` | procedural geometry | n/a |
 
 ## Documentation images
 

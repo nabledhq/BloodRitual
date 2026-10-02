@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { BufferAttribute, Mesh, MeshStandardMaterial, PlaneGeometry, Vector2 } from './procedural/index.js';
 import { fbm, smoothstep, lerp, clamp01 } from './noise.js';
 import { getTextureSet } from './textures.js';
 import { LAYOUT } from './layout.js';
@@ -68,112 +68,37 @@ export function groundWeights(x, z, height = terrainHeight(x, z)) {
   return [grass / sum, dirt / sum, mud / sum];
 }
 
-const SPLAT_VERTEX_PARS = /* glsl */ `
-attribute vec3 splat;
-varying vec3 vSplat;
-`;
-
-const SPLAT_FRAGMENT_PARS = /* glsl */ `
-uniform sampler2D grassMap;
-uniform sampler2D dirtMap;
-uniform sampler2D mudMap;
-uniform sampler2D grassNormal;
-uniform sampler2D dirtNormal;
-uniform sampler2D mudNormal;
-uniform sampler2D grassRough;
-uniform sampler2D dirtRough;
-uniform sampler2D mudRough;
-varying vec3 vSplat;
-`;
-
-// Height-based blending: each layer's height (normal map alpha) pushes it
-// through the others, giving crisp, natural transitions instead of a
-// blurry cross-fade.
-const SPLAT_MAP_FRAGMENT = /* glsl */ `
-vec2 gUvG = vNormalMapUv;
-vec2 gUvD = vNormalMapUv * 0.83 + 0.37;
-vec2 gUvM = vNormalMapUv * 0.71 + 0.61;
-vec4 gNG = texture2D( grassNormal, gUvG );
-vec4 gND = texture2D( dirtNormal, gUvD );
-vec4 gNM = texture2D( mudNormal, gUvM );
-vec3 gW = vSplat * ( vec3( 0.25 ) + vec3( gNG.a, gND.a, gNM.a ) );
-float gMax = max( max( gW.x, gW.y ), gW.z );
-gW = max( gW - vec3( gMax - 0.22 ), vec3( 0.0 ) );
-gW /= ( gW.x + gW.y + gW.z + 1e-5 );
-vec3 gN = gNG.xyz * gW.x + gND.xyz * gW.y + gNM.xyz * gW.z;
-vec3 gAlbedo = texture2D( grassMap, gUvG ).rgb * gW.x
-  + texture2D( dirtMap, gUvD ).rgb * gW.y
-  + texture2D( mudMap, gUvM ).rgb * gW.z;
-// Low-frequency variation hides texture repetition at a distance.
-float gMacro = texture2D( grassNormal, vNormalMapUv * 0.043 ).a * 0.6 + texture2D( dirtNormal, vNormalMapUv * 0.11 ).a * 0.4;
-gAlbedo *= 0.78 + 0.44 * gMacro;
-diffuseColor.rgb *= gAlbedo;
-`;
-
-const SPLAT_ROUGHNESS_FRAGMENT = /* glsl */ `
-float roughnessFactor = roughness * dot( gW, vec3(
-  texture2D( grassRough, gUvG ).g,
-  texture2D( dirtRough, gUvD ).g,
-  texture2D( mudRough, gUvM ).g ) );
-`;
-
-const NORMAL_SAMPLE = 'texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0';
-
 /**
- * Patches a MeshStandardMaterial shader so it blends the ground layers by
- * the per-vertex `splat` attribute. Exported for tests.
+ * The terrain material description. The ground layers are blended per
+ * vertex by the `splat` attribute; the engine (src/engine/TerrainMaterial.js)
+ * builds a Babylon.js PBR material whose shader samples every layer and
+ * blends them by height. `map` / `normalMap` carry the tiling.
  */
-export function applySplatShader(shader, textures) {
-  Object.assign(shader.uniforms, {
-    grassMap: { value: textures.grass.map },
-    dirtMap: { value: textures.dirt.map },
-    mudMap: { value: textures.mud.map },
-    grassNormal: { value: textures.grass.normalMap },
-    dirtNormal: { value: textures.dirt.normalMap },
-    mudNormal: { value: textures.mud.normalMap },
-    grassRough: { value: textures.grass.roughnessMap },
-    dirtRough: { value: textures.dirt.roughnessMap },
-    mudRough: { value: textures.mud.roughnessMap },
-  });
-  shader.vertexShader = shader.vertexShader
-    .replace('#include <common>', `#include <common>\n${SPLAT_VERTEX_PARS}`)
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;');
-  shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', `#include <common>\n${SPLAT_FRAGMENT_PARS}`)
-    .replace('#include <map_fragment>', SPLAT_MAP_FRAGMENT)
-    .replace('#include <roughnessmap_fragment>', SPLAT_ROUGHNESS_FRAGMENT)
-    .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace(NORMAL_SAMPLE, 'gN * 2.0 - 1.0'));
-  return shader;
-}
-
 export function createTerrainMaterial() {
   const textures = Object.fromEntries(GROUND_LAYERS.map((name) => [name, getTextureSet(name)]));
   const repeat = WORLD_SIZE / TEXTURE_METRES;
-  // `map` and `normalMap` are set so three.js defines the UV varyings and
-  // tangent frame; the shader patch then samples every layer itself.
   const map = textures.grass.map.clone();
   const normalMap = textures.grass.normalMap.clone();
   for (const t of [map, normalMap]) {
     t.repeat.set(repeat, repeat);
     t.needsUpdate = true;
   }
-  const material = new THREE.MeshStandardMaterial({
+  const material = new MeshStandardMaterial({
     name: 'terrain',
     map,
     normalMap,
-    normalScale: new THREE.Vector2(1.2, 1.2),
+    normalScale: new Vector2(1.2, 1.2),
     roughness: 1,
     metalness: 0,
   });
   material.userData.layers = [...GROUND_LAYERS];
-  material.onBeforeCompile = (shader) => applySplatShader(shader, textures);
-  material.customProgramCacheKey = () => 'terrain-splat-v1';
+  material.userData.splat = { textures, repeat };
   return material;
 }
 
 /** Builds the height-varied, texture-blended terrain mesh. */
 export function createTerrain() {
-  const geometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, TERRAIN_SEGMENTS, TERRAIN_SEGMENTS);
+  const geometry = new PlaneGeometry(WORLD_SIZE, WORLD_SIZE, TERRAIN_SEGMENTS, TERRAIN_SEGMENTS);
   geometry.rotateX(-Math.PI / 2);
   const position = geometry.attributes.position;
   const splat = new Float32Array(position.count * 3);
@@ -187,12 +112,12 @@ export function createTerrain() {
     splat[i * 3 + 1] = w[1];
     splat[i * 3 + 2] = w[2];
   }
-  geometry.setAttribute('splat', new THREE.BufferAttribute(splat, 3));
+  geometry.setAttribute('splat', new BufferAttribute(splat, 3));
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
 
-  const terrain = new THREE.Mesh(geometry, createTerrainMaterial());
+  const terrain = new Mesh(geometry, createTerrainMaterial());
   terrain.name = 'ground';
   terrain.receiveShadow = true;
   return terrain;

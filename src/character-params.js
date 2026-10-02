@@ -1,10 +1,10 @@
-import * as THREE from 'three';
+import { Color, SRGBColorSpace } from './procedural/index.js';
 import { createRng } from './rng.js';
 
 /**
  * Seeded, parametric description of a Seminole person of around 1900.
  *
- * `generateCharacterParams(seed, variant)` returns plain data (no three.js
+ * `generateCharacterParams(seed, variant)` returns plain data (no engine
  * objects): body proportions, face shape, skin, hair, eyes and clothing.
  * The same seed and variant always give identical parameters; different
  * seeds give visibly different people. `createCharacter` in character.js
@@ -149,9 +149,9 @@ export function generateCharacterParams(seed = 1, variant = 'man', overrides = {
   };
 
   // ---- Skin, hair, eyes -------------------------------------------------
-  const skinColor = new THREE.Color().setHSL(range(0.05, 0.075), range(0.27, 0.4), range(0.25, 0.37), THREE.SRGBColorSpace);
+  const skinColor = new Color().setHSL(range(0.05, 0.075), range(0.27, 0.4), range(0.25, 0.37), SRGBColorSpace);
   const skin = {
-    tone: skinColor.getHex(THREE.SRGBColorSpace),
+    tone: skinColor.getHex(SRGBColorSpace),
     redness: round(range(0.4, 1)),
     // Strength of the pore / wrinkle detail normal map.
     detail: round(interp([[6, 0.15], [16, 0.22], [30, 0.3], [50, 0.42], [75, 0.55]], age)),
@@ -159,18 +159,18 @@ export function generateCharacterParams(seed = 1, variant = 'man', overrides = {
   };
 
   const gray = elder ? range(0.35, 0.8) : age > 40 ? range(0, 0.15) : 0;
-  const hairBase = new THREE.Color().setHSL(range(0.04, 0.08), range(0.15, 0.3), range(0.06, 0.1), THREE.SRGBColorSpace);
-  const hairColor = hairBase.lerp(new THREE.Color(0x8c8884), gray);
+  const hairBase = new Color().setHSL(range(0.04, 0.08), range(0.15, 0.3), range(0.06, 0.1), SRGBColorSpace);
+  const hairColor = hairBase.lerp(new Color(0x8c8884), gray);
   const hair = {
-    color: hairColor.getHex(THREE.SRGBColorSpace),
+    color: hairColor.getHex(SRGBColorSpace),
     gray: round(gray),
     // Women and girls wore long hair in a bun (girls sometimes loose);
     // men's hair was short under the turban and boys' was cropped.
     style: female ? (child && rng() < 0.6 ? 'long' : 'bun') : child || teen ? 'cropped' : 'short',
     density: round(elder ? range(0.6, 0.85) : range(0.85, 1)),
   };
-  const irisColor = new THREE.Color().setHSL(range(0.05, 0.08), range(0.4, 0.6), range(0.1, 0.17), THREE.SRGBColorSpace);
-  const eyes = { iris: irisColor.getHex(THREE.SRGBColorSpace) };
+  const irisColor = new Color().setHSL(range(0.05, 0.08), range(0.4, 0.6), range(0.1, 0.17), SRGBColorSpace);
+  const eyes = { iris: irisColor.getHex(SRGBColorSpace) };
 
   // ---- Clothing ---------------------------------------------------------
   const trims = [...DYES.red, ...DYES.indigo, ...DYES.ochre, ...DYES.green, ...DYES.purple];

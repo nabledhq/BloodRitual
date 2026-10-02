@@ -1,6 +1,6 @@
-import * as THREE from 'three';
+import { CircleGeometry, DirectionalLight, Fog, Group, HemisphereLight, Mesh, Vector3 } from './procedural/index.js';
 import { createRng } from './rng.js';
-import { createSkyTexture, HORIZON_COLOR, SUN_DIRECTION } from './sky.js';
+import { createSky, HORIZON_COLOR, SUN_DIRECTION } from './sky.js';
 import { createTerrain, terrainHeight, WORLD_SIZE } from './terrain.js';
 import { createVegetation } from './vegetation.js';
 import { createChickee } from './structures.js';
@@ -17,17 +17,17 @@ export const FOG_NEAR = 22;
 export const FOG_FAR = 78;
 
 function createLights() {
-  const lights = new THREE.Group();
+  const lights = new Group();
   lights.name = 'lights';
 
   // Weak bounce fill; most ambient light comes from the sky environment map.
-  const hemi = new THREE.HemisphereLight(0xcfe0ea, 0x4d4a33, 0.35);
+  const hemi = new HemisphereLight(0xcfe0ea, 0x4d4a33, 0.35);
   hemi.name = 'skyLight';
   lights.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff0d8, 3.2);
+  const sun = new DirectionalLight(0xfff0d8, 3.2);
   sun.name = 'sun';
-  const focus = new THREE.Vector3(0.5, 0, -2.5);
+  const focus = new Vector3(0.5, 0, -2.5);
   sun.position.copy(focus).addScaledVector(SUN_DIRECTION, 35);
   sun.target.position.copy(focus);
   sun.castShadow = true;
@@ -51,7 +51,7 @@ function createLights() {
 
 function createPond() {
   const { pond } = LAYOUT;
-  const water = new THREE.Mesh(new THREE.CircleGeometry(1, 64), getMaterial('water'));
+  const water = new Mesh(new CircleGeometry(1, 64), getMaterial('water'));
   water.name = 'pond';
   water.rotation.x = -Math.PI / 2;
   water.position.set(pond.x, WATER_LEVEL, pond.z);
@@ -66,13 +66,13 @@ function createPond() {
  * scattered native vegetation. Returns the group that was added.
  */
 export function createWorld(scene, { seed = 1907 } = {}) {
-  const sky = createSkyTexture();
+  const sky = createSky();
   scene.background = sky;
   scene.environment = sky;
   scene.environmentIntensity = 0.85;
-  scene.fog = new THREE.Fog(SKY_COLOR, FOG_NEAR, FOG_FAR);
+  scene.fog = new Fog(SKY_COLOR, FOG_NEAR, FOG_FAR);
 
-  const world = new THREE.Group();
+  const world = new Group();
   world.name = 'world';
   world.add(createLights(), createTerrain(), createPond());
 
@@ -89,7 +89,7 @@ export function createWorld(scene, { seed = 1907 } = {}) {
   return world;
 }
 
-/** Per-frame ambient animation (fire flicker, water ripples). */
+/** Per-frame ambient animation (fire flicker, water ripples) of the world description. */
 export function updateWorld(world, elapsed) {
   const fire = world.getObjectByName('firePit');
   if (fire) updateFirePit(fire, elapsed);
