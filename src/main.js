@@ -1,5 +1,5 @@
 import './style.css';
-import { Game } from './game.js';
+import { Game } from './engine/Game.js';
 import { ControlsPanel } from './controls-panel.js';
 
 function isWebGLAvailable() {
@@ -14,13 +14,14 @@ function isWebGLAvailable() {
 const container = document.getElementById('game');
 
 if (isWebGLAvailable()) {
-  const game = new Game(container, { promptElement: document.getElementById('prompt') });
-  game.start();
   // Shown on start so first-time players see the controls; H toggles it.
   const controlsPanel = new ControlsPanel(document.getElementById('controls-panel'));
-  // Exposed for debugging from the browser console.
-  window.seminole = game;
   window.seminoleControls = controlsPanel;
+  Game.create(container, { promptElement: document.getElementById('prompt') }).then((game) => {
+    game.start();
+    // Exposed for debugging from the browser console.
+    window.seminole = game;
+  });
 } else {
   const message = document.createElement('div');
   message.className = 'error';
