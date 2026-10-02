@@ -1,0 +1,170 @@
+{
+  "movement": {
+    "walkSpeed": 1.15,
+    "runSpeed": 3.1,
+    "acceleration": 3.0,
+    "turnSpeed": 6.0,
+    "arriveDistance": 0.08,
+    "seatOffset": 0.31
+  },
+  "social": {
+    "talkRadius": 3.2,
+    "talkChancePerSecond": 0.35,
+    "talkSeconds": [4, 7],
+    "cooldownSeconds": 8
+  },
+  "places": {
+    "field": [4.6, 3.6],
+    "fieldPath": [4.0, 0.9],
+    "garden": [2.9, 4.4],
+    "store": [3.75, -0.55],
+    "storeFace": [3.0, -1.05],
+    "campPath": [0.4, 0.9],
+    "fireApproach": [-3.4, -0.9],
+    "fireApproach2": [-0.1, -1.0],
+    "fire": [-2.3, -2.9],
+    "fireSide": [-1.25, -1.75],
+    "chopSpot": [7.0, -0.25],
+    "woodpile": [8.2, -1.2],
+    "canoeSide": [-6.3, -6.0],
+    "canoe": [-7.1, -6.6],
+    "shorePath": [-6.6, -3.6],
+    "fishSpot": [-8.8, -4.2],
+    "pond": [-12, -10],
+    "campWest": [-4.6, 0.4],
+    "stall": [-0.8, 3.3],
+    "stallFace": [0.6, 1.4],
+    "stallFront": [0.35, 4.05],
+    "crates": [-2.6, 4.7],
+    "patrolA": [-4.6, 2.6],
+    "patrolB": [2.4, 5.0],
+    "patrolC": [6.8, 1.6],
+    "patrolD": [1.6, 1.3],
+    "chickeeFront": [2.6, 0.2],
+    "lookout": [5.6, 2.8]
+  },
+  "seats": {
+    "fireSeat": { "at": [-3.9, -2.0], "face": "fire" },
+    "fireSeat2": { "at": [-0.75, -1.9], "face": "fire" }
+  },
+  "roles": {
+    "farmer": {
+      "label": "Farmer",
+      "prompt": "He is bringing in the harvest",
+      "look": { "model": "man", "hair": "hair_parted", "beard": true, "tint": { "cloth": "#e6dcc4", "skin": "#c89c84", "hair": "#3a2c22" }, "height": 1.0 },
+      "idleSet": ["idle_wipe_brow", "idle_look_around", "idle_cross_arms"],
+      "walkSpeed": 0.95,
+      "workClip": "farm",
+      "tasks": [
+        { "do": "walk", "to": "field", "via": ["campPath", "fieldPath"] },
+        { "do": "work", "seconds": 8, "face": [6.0, 5.2] },
+        { "do": "idle", "seconds": 3, "variant": "idle_wipe_brow" },
+        { "do": "play", "action": "pick_up" },
+        { "do": "walk", "to": "store", "via": ["fieldPath"], "posture": "carry" },
+        { "do": "play", "action": "pick_up", "face": "storeFace" },
+        { "do": "walk", "to": "fireApproach", "via": ["campPath"] },
+        { "do": "sit", "seat": "fireSeat", "seconds": 9, "action": "eat" }
+      ]
+    },
+    "lawman": {
+      "label": "Lawman",
+      "prompt": "He is keeping an eye on the trading",
+      "look": { "model": "man", "hair": "hair_buzzed", "beard": true, "tint": { "cloth": "#6b6a72", "skin": "#e2c6b2", "hair": "#4a4038" }, "height": 1.03 },
+      "idleSet": ["idle_check_equipment", "idle_cross_arms", "idle_look_around"],
+      "walkSpeed": 1.05,
+      "workClip": "point",
+      "tasks": [
+        { "do": "walk", "to": "patrolB", "via": ["patrolA"] },
+        { "do": "walk", "to": "patrolC", "pace": "run" },
+        { "do": "idle", "seconds": 4, "variant": "idle_check_equipment", "face": "lookout" },
+        { "do": "work", "seconds": 2.5, "face": "stall" },
+        { "do": "walk", "to": "patrolD" },
+        { "do": "idle", "seconds": 7, "face": "stall" }
+      ]
+    },
+    "trader": {
+      "label": "Trader",
+      "prompt": "She is trading cloth, beads and coffee for pelts and plumes",
+      "look": { "model": "woman", "hair": "hair_buns", "tint": { "cloth": "#c79a86", "skin": "#c39276", "hair": "#1c1612" }, "height": 0.98 },
+      "idleSet": ["idle_cross_arms", "idle_nod", "idle_look_around"],
+      "walkSpeed": 0.85,
+      "workClip": "talk",
+      "tasks": [
+        { "do": "idle", "seconds": 8, "face": "stallFace" },
+        { "do": "play", "action": "wave", "face": "stallFace" },
+        { "do": "work", "seconds": 4, "face": "stallFace" },
+        { "do": "walk", "to": "crates" },
+        { "do": "play", "action": "pick_up" },
+        { "do": "walk", "to": "stall", "posture": "carry" },
+        { "do": "play", "action": "pick_up", "face": "stallFace" },
+        { "do": "play", "action": "point", "face": "stallFront" }
+      ]
+    },
+    "hunter": {
+      "label": "Hunter",
+      "prompt": "He is back from the glades with otter pelts to trade",
+      "look": { "model": "hunter", "hair": "hair_long", "tint": { "skin": "#b07c62", "hair": "#16110e" }, "height": 1.01 },
+      "idleSet": ["idle_look_around", "idle_shift_weight", "idle_nod"],
+      "walkSpeed": 1.1,
+      "workClip": "tool_work",
+      "tasks": [
+        { "do": "work", "seconds": 7, "face": "canoe" },
+        { "do": "walk", "to": "fishSpot", "via": ["shorePath"] },
+        { "do": "play", "action": "fish", "seconds": 9, "face": "pond" },
+        { "do": "idle", "seconds": 3, "variant": "idle_look_around", "face": "pond" },
+        { "do": "walk", "to": "campWest", "pace": "run" },
+        { "do": "idle", "seconds": 6 },
+        { "do": "walk", "to": "canoeSide", "via": ["shorePath"] }
+      ]
+    },
+    "laborer": {
+      "label": "Laborer",
+      "prompt": "He is splitting firewood for the camp",
+      "look": { "model": "man", "hair": "hair_buzzed", "tint": { "cloth": "#a39a88", "skin": "#a87a60", "hair": "#2e241c" }, "height": 0.98 },
+      "idleSet": ["idle_wipe_brow", "idle_shift_weight", "idle_scratch_head"],
+      "walkSpeed": 1.0,
+      "workClip": "chop",
+      "tasks": [
+        { "do": "work", "seconds": 9, "face": "woodpile" },
+        { "do": "idle", "seconds": 3, "variant": "idle_wipe_brow" },
+        { "do": "play", "action": "pick_up", "face": "woodpile" },
+        { "do": "walk", "to": "fireSide", "via": ["chickeeFront", "fireApproach2"], "posture": "carry" },
+        { "do": "crouch", "seconds": 4, "face": "fire" },
+        { "do": "walk", "to": "chickeeFront" },
+        { "do": "idle", "seconds": 5, "variant": "idle_cross_arms" },
+        { "do": "walk", "to": "chopSpot" }
+      ]
+    },
+    "civilian": {
+      "label": "Villager",
+      "prompt": "She has come to see what the trader brought",
+      "look": { "model": "woman", "hair": "hair_long", "tint": { "cloth": "#9fb2c9", "skin": "#b98a70", "hair": "#16110e" }, "height": 0.96 },
+      "idleSet": ["idle_look_around", "idle_cross_arms", "idle_nod", "idle_shift_weight"],
+      "walkSpeed": 0.9,
+      "workClip": "water_crops",
+      "tasks": [
+        { "do": "walk", "to": "stallFront" },
+        { "do": "idle", "seconds": 9, "face": "stall" },
+        { "do": "walk", "to": "garden" },
+        { "do": "work", "seconds": 6, "face": "field" },
+        { "do": "walk", "to": "fireApproach2", "via": ["campPath"] },
+        { "do": "sit", "seat": "fireSeat2", "seconds": 8, "action": "drink" },
+        { "do": "walk", "to": "campWest" },
+        { "do": "idle", "seconds": 6, "variant": "idle_cross_arms" }
+      ]
+    }
+  },
+  "population": [
+    { "name": "npcFarmer", "role": "farmer", "at": [1.5, 2.2], "seed": 11 },
+    { "name": "npcLawman", "role": "lawman", "at": [-3.6, 3.4], "seed": 23 },
+    { "name": "npcTrader", "role": "trader", "at": [-0.8, 3.3], "seed": 37 },
+    { "name": "npcHunter", "role": "hunter", "at": [-6.3, -6.0], "seed": 41 },
+    { "name": "npcLaborer", "role": "laborer", "at": [7.0, -0.25], "seed": 53 },
+    { "name": "npcVillager", "role": "civilian", "at": [-4.6, 0.4], "seed": 67, "startTask": 5 },
+    {
+      "name": "npcVillager2", "role": "civilian", "at": [0.6, 4.6], "seed": 79, "startTask": 1,
+      "look": { "model": "man", "hair": "hair_parted", "tint": { "cloth": "#b8a58a", "skin": "#b07a5e", "hair": "#231a14" }, "height": 1.01 },
+      "prompt": "He is waiting his turn at the trader's blanket"
+    }
+  ]
+}

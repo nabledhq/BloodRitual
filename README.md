@@ -16,7 +16,8 @@ Then open the URL Vite prints (usually http://localhost:5173). You will see
 your character standing in a camp in the Florida Everglades around 1900: a
 palmetto-thatched chickee, a star fire with an iron kettle, a dugout canoe by
 a tannin-dark pond, cypress, cabbage palms, saw palmetto and sawgrass, and
-seven villagers of all ages going about their day. A **How to Play** panel listing the controls
+seven animated villagers (a farmer, a lawman, a trader, a hunter, a laborer
+and two civilians) going about their routines (see [Villagers](#villagers-npcs)). A **How to Play** panel listing the controls
 is shown when the game starts; press `H` to hide or show it again.
 
 ## Controls
@@ -24,18 +25,22 @@ is shown when the game starts; press `H` to hide or show it again.
 Movement is relative to the camera: "forward" is the direction the camera
 is looking.
 
-| Action                 | Keys             |
-| ---------------------- | ---------------- |
-| Move forward           | `W` / `↑`        |
-| Move back              | `S` / `↓`        |
-| Move left              | `A` / `←`        |
-| Move right             | `D` / `→`        |
-| Run (hold)             | `Shift`          |
-| Jump                   | `Space`          |
-| Crouch (hold)          | `C`              |
-| Look around            | `Drag mouse`     |
-| Zoom                   | `Scroll`         |
-| Show / hide this panel | `H`              |
+| Action                                  | Keys         |
+| --------------------------------------- | ------------ |
+| Move forward                            | `W` / `↑`    |
+| Move back                               | `S` / `↓`    |
+| Move left                               | `A` / `←`    |
+| Move right                              | `D` / `→`    |
+| Run (hold)                              | `Shift`      |
+| Jump                                    | `Space`      |
+| Crouch (hold)                           | `C`          |
+| Look around                             | `Drag mouse` |
+| Zoom                                    | `Scroll`     |
+| Show / hide this panel                  | `H`          |
+| Select next villager (debug)            | `N`          |
+| Play next animation on villager (debug) | `M`          |
+| Return villager to routine (debug)      | `B`          |
+| Show / hide FPS and NPC info (debug)    | `G`          |
 
 Tips:
 
@@ -65,12 +70,15 @@ The aim is believable, polished realism, not photorealism:
   splatting (`src/terrain.js`).
 - Instanced vegetation: every plant type has 2-3 procedural variants and
   randomised position, rotation, scale and tint.
-- Procedural, seeded characters (see [Characters](#characters)) with PBR
-  skin, strand-card hair, layered period clothing and idle, walk and run
+- A procedural, seeded player character (see [Characters](#characters)) with
+  PBR skin, strand-card hair, layered period clothing and idle, walk and run
   animations.
+- Premade, rigged and skinned villagers (CC0, glTF) driven by a shared
+  animation library (see [Villagers](#villagers-npcs)).
 
-All textures and models are generated in code, so there are no binary assets.
-See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
+The world, props and player are generated in code; the only binary assets
+are the CC0 villager models and clips in `public/models/npc/`. See
+[ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 
 ## Scripts
 
@@ -84,9 +92,10 @@ See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 ## Project layout
 
 ```
-index.html              Page shell, HUD, hover prompt and the How to Play panel container
+index.html              Page shell, HUD, hover prompt, the How to Play panel and debug overlay containers
+npcs.html               NPC lineup / clip viewer page (dev server only)
 src/main.js             Entry point: checks for WebGL and starts the game
-src/game.js             Renderer, camera, controls, player movement, NPCs, hover highlighting and the main loop
+src/game.js             Renderer, camera, controls, player movement, NPC loading, debug keys, hover highlighting and the main loop
 src/config.js           Movement constants (speeds, jump, crouch)
 src/input.js            Keyboard bindings and held-key tracking
 src/movement.js         Character movement: walking, running, jumping and crouching over the terrain
@@ -96,6 +105,19 @@ src/character-params.js Seeded character parameters (body, face, skin, hair, clo
 src/character-geometry.js  Sculpted head, ears, eyes, hair cards, hands, feet, garments and patchwork
 src/character-materials.js Skin (with subsurface-like shading), hair, eye and cloth textures and materials
 src/lineup.js           Character lineup page (characters.html, dev server only)
+src/npc/assets.js       Loads the NPC glTF models and clips, clones and tints NPC bodies
+src/npc/retarget.js     Retargets library clips onto each model skeleton; upper / lower body masks
+src/npc/actions.json    Action registry: logical action names -> clips, fallbacks, blend and gait settings
+src/npc/animation-library.js    Resolves actions (with fallbacks) and idle variants for one skeleton
+src/npc/animation-controller.js Per-NPC animation state machine (crossfades, gaits, layers, idle variety)
+src/npc/roles.json      Role profiles, places, seats and the demo population
+src/npc/roles.js        Loads and validates roles.json
+src/npc/npc.js          One NPC: body, controller, waypoint movement and the role's task loop
+src/npc/population.js   Spawns the population, pairs idle NPCs up to talk, debug selection
+src/npc-lineup.js       NPC lineup / clip viewer page (npcs.html, dev server only)
+src/debug-overlay.js    FPS counter and selected-NPC state overlay
+public/models/npc/      The NPC models and animation library (built by tools/npc-assets)
+tools/npc-assets/       Script that builds public/models/npc from the CC0 source packs
 src/world.js            Assembles the world: sky, fog, sun, terrain, pond, chickee, props, plants
 src/sky.js              Procedural HDR sky / environment map
 src/terrain.js          Height field, ground-layer weights and the splat shader
@@ -112,9 +134,157 @@ src/style.css           Page, HUD, prompt and panel styles
 tests/                  Vitest unit tests
 ```
 
+## Villagers (NPCs)
+
+The villagers are premade, rigged human models by
+[Quaternius](https://quaternius.com) (CC0): the head of a *Universal Base
+Character* joined to the parts of a *Modular Character Outfits* outfit, all
+bound to one humanoid skeleton. They are animated with clips from the
+*Universal Animation Library* 1 and 2, which use the same rig, so every clip
+plays on every model. There are three models in
+`public/models/npc/npc-characters.glb` (`man` and `woman` in work shirts and
+trousers, `hunter` in buckskin leathers and boots); each villager also picks
+a hair style, an optional beard, a height and colour tints for clothing, skin
+and hair, so no two look the same. Sources and licences are in
+[ASSETS_LICENSES.md](ASSETS_LICENSES.md).
+
+This is a game-art interpretation like the player character: the outfits
+are generic period work clothes, not Seminole dress, and have not been
+reviewed by Seminole cultural advisors.
+
+### How it works
+
+- **Animation library** (`src/npc/actions.json`, `src/npc/animation-library.js`):
+  maps logical action names to clips. Each action lists the clip names that
+  genuinely show it and a `fallback` action used when none of them is in the
+  library; the chain always ends at a real clip. When the assets load, every
+  clip is retargeted to each model's skeleton (`src/npc/retarget.js`), so
+  differences in bone lengths and rest pose do not distort the poses.
+- **Animation controller** (`src/npc/animation-controller.js`): one per NPC,
+  on three.js' `AnimationMixer`. The NPC sets a posture (`stand`, `crouch`,
+  `sit`, `carry`), its speed and, for tasks, an action; the controller
+  crossfades to the right clip over `blendDuration` (0.3 s by default, in
+  `actions.json`; stopping from a run takes 1.5×). Idle ↔ walk ↔ run ↔
+  sprint are chosen from the speed with hysteresis
+  (`locomotion.walkThreshold` 0.15 m/s, `runThreshold` 2.0 m/s,
+  `sprintThreshold` 4.2 m/s) and the playback rate follows the speed.
+  Sitting down and standing up play their own clips. Upper-body layers let a
+  seated villager eat or drink, and a villager stood still while carrying
+  keep their arms full.
+- **Idle variety**: while standing idle, a villager plays one of its role's
+  idle variants (looking around, folding arms, nodding, ...) for 3-5 s every
+  2.5-6 s, never the same one twice in a row. Idle villagers within 3.2 m of
+  each other may turn to face one another and talk.
+- **Roles and schedules** (`src/npc/roles.json`): each role has a look, an
+  `idleSet`, a `walkSpeed` multiplier, a `workClip` and a looping `tasks`
+  list (`walk`, `work`, `play`, `idle`, `sit`, `crouch`; see
+  `src/npc/roles.js`). For example the farmer walks to the field, harvests,
+  wipes his brow, picks up a basket, carries it to the chickee, puts it down
+  and sits by the fire to eat. Movement is straight lines between named
+  waypoints, easing in and out (no pathfinding).
+- **Demo population**: `population` in `roles.json` spawns one villager per
+  role plus a second civilian. Each runs a full loop in 25-55 s.
+
+| Role     | Model    | Walk × | Work clip     | Idle set                                     | Loop |
+| -------- | -------- | ------ | ------------- | -------------------------------------------- | ---- |
+| farmer   | man      | 0.95   | `farm`        | wipe brow, look around, cross arms           | field → farm → wipe brow → pick up → carry to store → put down → sit and eat |
+| lawman   | man      | 1.05   | `point`       | check equipment, cross arms, look around     | patrol (walk), run to the lookout, check equipment, point, walk back, stand watch |
+| trader   | woman    | 0.85   | `talk`        | cross arms, nod, look around                 | stand at the stall, wave, haggle, fetch a basket from the crates, point |
+| hunter   | hunter   | 1.10   | `tool_work`   | look around, shift weight, nod               | fix the canoe, walk to the shore, fish, run back to camp, rest |
+| laborer  | man      | 1.00   | `chop`        | wipe brow, shift weight, scratch head        | chop wood, wipe brow, carry wood to the fire, crouch to stoke it, rest |
+| civilian | woman / man | 0.90 | `water_crops` | look around, cross arms, nod, shift weight  | visit the trader, water the garden, sit by the fire and drink, stroll |
+
+### Debug keys and the clip viewer
+
+- `N` selects the next villager (a ring marks it), `M` plays the next
+  registered action on it (all 25 required actions first, then the helper
+  and idle actions; 52 in total) and pauses its routine, `B` sends it back
+  to its routine, and `G` toggles an overlay with an FPS counter and the
+  selected villager's task, posture, gait, current clip and last crossfade
+  duration. The action and the clip it resolved to are also logged to the
+  console. Open the game with `?npclog` to log every crossfade, e.g.
+  `npcFarmer: crossfade walk -> carry over 0.30 s`.
+- `npm run dev` and open `/npcs.html` to see every role's look in a row.
+  `?action=farm` plays one action on all of them, `?t=0.5` freezes it half
+  way, and `M` steps through every action.
+
+### Actions and fallback clips
+
+All 25 actions resolve to a clip; the test suite fails if one does not. The
+actions without a dedicated clip in the free libraries use these stand-ins:
+
+| Action | Clip used | How |
+| ------ | --------- | --- |
+| `walk` / `run` / `sprint` | `Walk_Loop` / `Jog_Fwd_Loop` / `Sprint_Loop` | own clips |
+| `crouch` / `sit` / `stand_up` | `Crouch_Idle_Loop` / `Sitting_Idle_Loop` / `Sitting_Exit` | own clips (sitting down plays `Sitting_Enter`) |
+| `carry` / `pick_up` / `talk` | `Walk_Carry_Loop` / `PickUp_Table` / `Idle_Talking_Loop` | own clips |
+| `eat` / `tool_work` / `farm` / `chop` | `Consume` / `Fixing_Kneeling` / `Farm_Harvest` / `TreeChopping_Loop` | own clips |
+| `fight` / `reload` / `death` | `Punch_Cross` / `Pistol_Reload` / `Death01` | own clips (debug only) |
+| `open_door` | `Interact` | **fallback** via `interact` (reach forward) |
+| `ride` | `Driving_Loop` | **fallback** via `drive` (seated, hands forward; debug only) |
+| `point` | `Interact` | **fallback** via `interact` (points with the index finger) |
+| `wave` | `Idle_Rail_Call` | **fallback** via `call_out` (raised, beckoning hand) |
+| `drink` | `Consume` | **fallback** via `eat` |
+| `fish` | `Idle_Lantern_Loop` | **fallback** via `hold_out` (arm held out, as if holding a rod) |
+| `cover` | `Crouch_Idle_Loop` | **fallback** via `crouch` (debug only) |
+| `injured_walk` | `Zombie_Walk_Fwd_Loop` | **fallback** via `shamble` (limping shuffle; debug only) |
+| `fall` | `Hit_Knockback` | **fallback** via `knockback` (falls on the back; debug only) |
+| idle `look_around` | `Idle_No_Loop` | **fallback** via `idle_head_shake` |
+| idle `shift_weight` | `Idle_FoldArms_Loop` | **fallback** via `idle_cross_arms` |
+| idle `scratch_head` | `Idle_No_Loop` | **fallback** via `idle_look_around` |
+| idle `check_equipment` | `Idle_Torch_Loop` | **fallback** via `idle_hold_torch` (hand to chest) |
+| idle `wipe_brow` | `Yes` | **fallback** via `idle_nod` |
+| idle `cross_arms` / `nod` | `Idle_FoldArms_Loop` / `Yes` | own clips |
+
+Combat, riding, cover, injury, falling and death have no gameplay yet; their
+clips are registered and can be played with the debug keys only.
+
+### Adding a model, clip or role
+
+- **A clip**: add its name to `CLIPS` in `tools/npc-assets/build.mjs` (it
+  must use the Quaternius universal humanoid rig, i.e. the bone names in the
+  existing files), run `./fetch-sources.sh` and `npm install && npm run
+  build` in `tools/npc-assets/`, then list the clip name first in the
+  action's `clips` in `src/npc/actions.json`. A clip named in `clips` takes
+  over from the fallback automatically; add a new entry to `actions` for a
+  new action. Record the source in ASSETS_LICENSES.md.
+- **A model**: add an entry to `MODELS` in `tools/npc-assets/build.mjs`: the
+  part whose skeleton is shared, a base-character file for the head (cut at
+  the collar), the outfit parts and any optional hair (`hair_*`) or `beard`
+  meshes. Rebuild; the new scene name can then be used as `look.model`.
+  Models on the same rig need no other changes: clips are retargeted when the
+  game loads them.
+- **A role**: add it under `roles` in `src/npc/roles.json` with `label`,
+  `prompt`, `look`, `idleSet`, `walkSpeed`, `workClip` and `tasks`, add any
+  new waypoints to `places` (or seats to `seats`), and add a villager with
+  that role to `population`. `validateRoles()` (run by the tests) reports
+  unknown places, seats or task types.
+
+### Performance
+
+Measured on this branch and on `main` (seven procedural villagers) from
+production builds in headless Chromium with software WebGL (SwiftShader,
+480×270, default camera, 15 s per run), so absolute numbers are very low and
+noisy; what matters is the comparison:
+
+| Build  | FPS (run 1 / run 2) | Draw calls | Triangles | NPC + player update (CPU) |
+| ------ | ------------------- | ---------- | --------- | ------------------------- |
+| `main` | 0.81 / 0.70         | 402        | 917 k     | 0.12 ms per frame         |
+| branch | 0.59 / 0.78         | 245        | 979 k     | 0.38 ms per frame (NPCs 0.2 ms) |
+
+The difference is within run-to-run noise. The premade villagers need fewer
+draw calls than the procedural ones; skinning runs on the GPU. The models
+and clips (6.5 MB) load in the background after the world appears, and
+retargeting the clips onto the three skeletons takes about 0.3 s once.
+Press `G` in the game for the live FPS counter.
+
+![Villagers going about their routines](docs/screenshots/npcs-camp.jpg)
+
+![The NPC looks (npcs.html)](docs/screenshots/npcs-lineup.jpg)
+
 ## Characters
 
-Everyone in the camp, the player included, is built in code from a seeded
+The player is built in code from a seeded
 set of parameters (`generateCharacterParams(seed, variant)` in
 `src/character-params.js`); the same seed always gives the same person and
 different seeds give different faces, builds and clothing. There are six
@@ -147,8 +317,8 @@ variants: `elderMan`, `elderWoman`, `man`, `woman`, `teen` and `child`.
   a slow weight shift and looking around, each villager on their own
   rhythm), a walk cycle and, when sprinting, a run cycle.
 
-Run `npm run dev` and open `/characters.html` to see the player and every
-villager in a row; `/characters.html?seed=5&variant=elderWoman` shows a
+Run `npm run dev` and open `/characters.html` to see the player and a sample
+character of every variant in a row; `/characters.html?seed=5&variant=elderWoman` shows a
 single generated character.
 
 ![Character lineup](docs/screenshots/characters-lineup.jpg)

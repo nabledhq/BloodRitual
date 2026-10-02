@@ -1,0 +1,15 @@
+{
+  "name": "seminole-npc-assets",
+  "private": true,
+  "type": "module",
+  "description": "Builds the NPC character and animation GLBs in public/models/npc from the CC0 Quaternius sources",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "sharp": "^0.35.5"
+  }
+}

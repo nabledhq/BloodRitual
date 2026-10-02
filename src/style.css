@@ -145,6 +145,24 @@ body {
   opacity: 0.9;
 }
 
+#debug-overlay {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(20, 16, 10, 0.72);
+  color: #fff8e7;
+  font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+  pointer-events: none;
+  user-select: none;
+}
+
+#debug-overlay[hidden] {
+  display: none;
+}
+
 .error {
   position: fixed;
   inset: 0;

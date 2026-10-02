@@ -6,78 +6,28 @@ import {
   updateCharacterWalk,
   CHARACTER_HEIGHT,
 } from './character.js';
-import { generateCharacterParams } from './character-params.js';
 import { createWorld, updateWorld, terrainHeight } from './world.js';
 import { Highlighter, collectInteractive, pickInteractive } from './interaction.js';
-import { LAYOUT } from './layout.js';
-import { KeyboardInput } from './input.js';
+import { KeyboardInput, DEBUG_KEYS } from './input.js';
 import { createMovementState, updateMovement, cameraYaw } from './movement.js';
 import { MOVEMENT } from './config.js';
+import { loadNpcAssets } from './npc/assets.js';
+import { NpcPopulation } from './npc/population.js';
+import { DebugOverlay } from './debug-overlay.js';
 
-/**
- * The people of the camp. Each is generated from a fixed seed, so they look
- * the same on every launch. `at` is where they stand (or null for the man
- * walking the camp loop) and `face` what they turn towards.
- */
-export const VILLAGERS = Object.freeze([
-  { name: 'npcWoman', seed: 41, variant: 'woman', at: [-3.3, -1.8], face: 'firePit', label: 'Villager', prompt: 'She is tending the cooking fire' },
-  { name: 'npcElderWoman', seed: 7, variant: 'elderWoman', at: [-1.35, -2.0], face: 'firePit', label: 'Elder', prompt: 'She is watching the kettle and telling stories' },
-  { name: 'npcChild', seed: 23, variant: 'child', sex: 'female', at: [-0.75, -1.15], face: [0, 2], label: 'Child', prompt: 'She is curious about you' },
-  { name: 'npcElderMan', seed: 12, variant: 'elderMan', at: [3.6, -1.9], face: [0, 0], label: 'Elder', prompt: 'He is resting in the shade of the chickee' },
-  { name: 'npcTeen', seed: 62, variant: 'teen', sex: 'male', at: [2.95, -0.55], face: 'mortar', label: 'Villager', prompt: 'He is waiting his turn at the corn mortar' },
-  { name: 'npcHunter', seed: 77, variant: 'man', at: [-5.6, -5.0], face: 'canoe', label: 'Villager', prompt: 'He is checking the dugout canoe' },
-  { name: 'npcMan', seed: 3, variant: 'man', at: null, label: 'Villager', prompt: 'He is walking back from the canoe' },
-]);
+/** Longest NPC simulation step, so a stalled tab does not teleport villagers. */
+const MAX_NPC_STEP = 0.1;
 
-function facing([x, z], target) {
-  const [tx, tz] = Array.isArray(target) ? target : [LAYOUT[target].x, LAYOUT[target].z];
-  return Math.atan2(tx - x, tz - z);
-}
-
-/** NPCs: six villagers of different ages standing about the camp and a man walking a loop through it. */
-export function createNpcs() {
-  return VILLAGERS.map((v) => {
-    const npc = createCharacter(generateCharacterParams(v.seed, v.variant, v.sex ? { sex: v.sex } : {}));
-    npc.name = v.name;
-    npc.userData.interactive = { label: v.label, prompt: v.prompt };
-    if (v.at) {
-      const [x, z] = v.at;
-      npc.position.set(x, terrainHeight(x, z), z);
-      npc.rotation.y = facing(v.at, v.face);
-      npc.userData.behaviour = 'idle';
-    } else {
-      npc.userData.behaviour = 'walk';
-      npc.userData.path = LAYOUT.walkPath;
-      npc.userData.speed = 1.1;
-    }
-    return npc;
-  });
-}
-
-/** Position on the elliptical walk path after walking `distance` metres. */
-export function walkPathPoint(path, distance) {
-  // Approximate perimeter (Ramanujan) to convert distance to angle.
-  const { rx, rz } = path;
-  const perimeter = Math.PI * (3 * (rx + rz) - Math.sqrt((3 * rx + rz) * (rx + 3 * rz)));
-  const angle = (distance / perimeter) * Math.PI * 2;
-  const x = path.x + Math.cos(angle) * rx;
-  const z = path.z + Math.sin(angle) * rz;
-  // Tangent direction (counter-clockwise when seen from above is +angle).
-  const dx = -Math.sin(angle) * rx;
-  const dz = Math.cos(angle) * rz;
-  return { x, z, heading: Math.atan2(dx, dz) };
-}
-
-function updateNpc(npc, elapsed) {
-  if (npc.userData.behaviour === 'walk') {
-    const distance = elapsed * npc.userData.speed;
-    const { x, z, heading } = walkPathPoint(npc.userData.path, distance);
-    const bob = updateCharacterWalk(npc, distance, elapsed);
-    npc.position.set(x, terrainHeight(x, z) + bob, z);
-    npc.rotation.y = heading;
-  } else {
-    updateCharacterIdle(npc, elapsed);
-  }
+/** A soft ring drawn under the NPC selected with the debug keys. */
+function createSelectionMarker() {
+  const material = new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffb040, emissiveIntensity: 0.8, roughness: 0.6, transparent: true, opacity: 0.85, depthWrite: false });
+  const marker = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 40), material);
+  marker.name = 'npcSelectionMarker';
+  marker.rotation.x = -Math.PI / 2;
+  marker.visible = false;
+  marker.receiveShadow = true;
+  marker.raycast = () => {};
+  return marker;
 }
 
 /**
@@ -85,9 +35,15 @@ function updateNpc(npc, elapsed) {
  * call `start()` to begin rendering.
  */
 export class Game {
-  constructor(container, { promptElement = null } = {}) {
+  /**
+   * `npcAssets()` resolves to the loaded NPC models and clips (defaults to
+   * fetching them); `debugElement` shows the debug overlay; `npcLog(message)`
+   * receives every NPC crossfade (e.g. `console.debug`).
+   */
+  constructor(container, { promptElement = null, debugElement = null, npcAssets = loadNpcAssets, npcLog = null } = {}) {
     this.container = container;
     this.promptElement = promptElement;
+    this.npcLog = npcLog;
     this.timer = new THREE.Timer();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -109,8 +65,12 @@ export class Game {
     this.character.position.y = terrainHeight(0, 0);
     this.scene.add(this.character);
 
-    this.npcs = createNpcs();
-    this.scene.add(...this.npcs);
+    // NPCs load asynchronously (rigged glTF models and clips); see loadNpcs().
+    this.npcs = [];
+    this.population = null;
+    this.selectionMarker = createSelectionMarker();
+    this.scene.add(this.selectionMarker);
+    this.debugOverlay = new DebugOverlay(debugElement);
 
     this.camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 250);
     this.camera.position.set(2.2, 1.9, 4.2);
@@ -139,12 +99,65 @@ export class Game {
     this.input = new KeyboardInput(window);
     this.input.attach();
 
+    this.onDebugKey = this.onDebugKey.bind(this);
+    window.addEventListener('keydown', this.onDebugKey);
+    this.npcsReady = this.loadNpcs(npcAssets);
+
     this.onResize = this.onResize.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerLeave = this.onPointerLeave.bind(this);
     window.addEventListener('resize', this.onResize);
     this.renderer.domElement.addEventListener?.('pointermove', this.onPointerMove);
     this.renderer.domElement.addEventListener?.('pointerleave', this.onPointerLeave);
+  }
+
+  /** Loads the NPC models and spawns the demo population. Resolves to the population. */
+  async loadNpcs(npcAssets) {
+    try {
+      const assets = await npcAssets();
+      if (this.disposed) return null;
+      this.population = new NpcPopulation(assets, { groundAt: terrainHeight, log: this.npcLog });
+      this.npcs = this.population.groups;
+      this.scene.add(...this.npcs);
+      this.interactive = collectInteractive(this.scene);
+      this.applyAnisotropy();
+      return this.population;
+    } catch (error) {
+      console.error('Seminole: could not load the villagers', error);
+      return null;
+    }
+  }
+
+  /** Debug keys: select an NPC, step it through every action, send it back, toggle the overlay. */
+  onDebugKey(event) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const population = this.population;
+    switch (event.code) {
+      case DEBUG_KEYS.overlay:
+        this.debugOverlay.toggle();
+        return;
+      case DEBUG_KEYS.selectNpc:
+        if (!population) return;
+        population.selectNext();
+        this.debugOverlay.note(`selected ${population.selected.name}`);
+        break;
+      case DEBUG_KEYS.nextAction: {
+        if (!population) return;
+        const r = population.playNextAction();
+        const via = r.fallback ? ` (fallback: ${r.via.join(' > ')})` : '';
+        this.debugOverlay.note(`action ${population.debugActionIndex + 1}/${population.selected.controller.library.actionNames().length}: ${r.action} -> ${r.clip}${via}`);
+        console.info(`[npc debug] ${population.selected.name}: ${r.action} -> ${r.clip}${via}`);
+        break;
+      }
+      case DEBUG_KEYS.resumeNpc:
+        if (!population?.selected) return;
+        population.resumeSelected();
+        this.debugOverlay.note(`${population.selected.name} back to its routine`);
+        break;
+      default:
+        return;
+    }
+    this.debugOverlay.toggle(true);
   }
 
   /** Sharper textures at grazing angles (ground, thatch) where supported. */
@@ -205,10 +218,19 @@ export class Game {
     const step = delta ?? this.timer.getDelta();
     const elapsed = this.timer.getElapsed();
     this.updatePlayer(step, elapsed);
-    for (const npc of this.npcs) updateNpc(npc, elapsed);
+    this.updateNpcs(Math.min(step, MAX_NPC_STEP));
     updateWorld(this.world, elapsed);
     this.controls.update();
     this.updateHover();
+  }
+
+  /** Advances every NPC (behaviour and animation) and the debug overlay. */
+  updateNpcs(delta) {
+    const selected = this.population?.selected ?? null;
+    this.population?.update(delta);
+    this.selectionMarker.visible = Boolean(selected);
+    if (selected) this.selectionMarker.position.set(selected.position.x, selected.position.y + 0.03, selected.position.z);
+    this.debugOverlay.update(delta, selected);
   }
 
   /**
@@ -261,8 +283,11 @@ export class Game {
   }
 
   dispose() {
+    this.disposed = true;
     this.renderer.setAnimationLoop(null);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.onDebugKey);
+    this.population?.dispose();
     this.renderer.domElement.removeEventListener?.('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener?.('pointerleave', this.onPointerLeave);
     this.highlighter.dispose();
