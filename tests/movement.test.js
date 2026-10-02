@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import * as THREE from 'three';
+import { Vector3 } from '../src/procedural/index.js';
 import { MOVEMENT } from '../src/config.js';
 import {
   createMovementState,
@@ -49,7 +49,7 @@ describe('horizontalVelocity', () => {
 
   it('follows the camera when it turns', () => {
     // A default three.js camera looks down -Z; its right is +X.
-    const yaw = cameraYaw(new THREE.Vector3(0, 2, 5), new THREE.Vector3(0, 1, 0));
+    const yaw = cameraYaw(new Vector3(0, 2, 5), new Vector3(0, 1, 0));
     const fwd = horizontalVelocity({ ...idle, forward: 1 }, yaw);
     expect(fwd.x).toBeCloseTo(0);
     expect(fwd.z).toBeCloseTo(-MOVEMENT.walkSpeed);

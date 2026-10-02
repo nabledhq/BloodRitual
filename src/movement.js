@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Vector3 } from './procedural/index.js';
 import { MOVEMENT } from './config.js';
 
 /** Ground height used when no terrain is supplied: a flat plane at y = 0. */
@@ -8,10 +8,10 @@ export const flatGround = () => 0;
  * Creates the mutable movement state for a character standing on the
  * ground at `position`. `groundAt(x, z)` gives the ground height.
  */
-export function createMovementState(position = new THREE.Vector3(), config = MOVEMENT, groundAt = flatGround) {
+export function createMovementState(position = new Vector3(), config = MOVEMENT, groundAt = flatGround) {
   return {
     position: position.clone(),
-    velocity: new THREE.Vector3(),
+    velocity: new Vector3(),
     grounded: position.y <= groundAt(position.x, position.z),
     crouching: false,
     height: config.standingHeight,

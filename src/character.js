@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { Box3, BoxGeometry, Color, ConeGeometry, CylinderGeometry, Group, MathUtils, Matrix4, TorusGeometry } from './procedural/index.js';
 import { generateCharacterParams } from './character-params.js';
 import {
   characterSkinMaterial,
@@ -104,7 +104,7 @@ function nameFor(side, part) {
 }
 
 function group(name, parent, x = 0, y = 0, z = 0) {
-  const g = new THREE.Group();
+  const g = new Group();
   g.name = name;
   g.position.set(x, y, z);
   parent?.add(g);
@@ -143,11 +143,11 @@ function buildHead(params, dims, mats, torso) {
   head.userData.baseY = dims.torso;
   const neckParts = new PartBuilder();
   const neck = limbGeometry(dims.neckR, dims.neckR * 1.08, dims.neck + 0.06 * dims.H, { bulge: -0.05, segments: 12 });
-  neckParts.add(mats.skin, neck, { matrix: new THREE.Matrix4().makeTranslation(0, dims.neck + 0.3 * hh, -0.06 * hh), label: 'neck' });
+  neckParts.add(mats.skin, neck, { matrix: new Matrix4().makeTranslation(0, dims.neck + 0.3 * hh, -0.06 * hh), label: 'neck' });
   neckParts.build(head);
 
   const skull = group('skull', head, 0, dims.neck, 0.015 * hh);
-  const scale = new THREE.Matrix4().makeScale(hh, hh, hh);
+  const scale = new Matrix4().makeScale(hh, hh, hh);
   const sculptor = createHeadSculpt(params.face);
   const parts = new PartBuilder();
   const headGeom = headGeometry(sculptor, params.face, params.skin.redness);
@@ -163,13 +163,13 @@ function buildHead(params, dims, mats, torso) {
 
   // Eyes in their sockets, with lids, lashes and brows.
   const eyeR = 0.052 * (0.92 + 0.16 * params.face.eyeSize) * (params.age < 12 ? 1.1 : 1);
-  const irisColor = new THREE.Color(params.eyes.iris);
+  const irisColor = new Color(params.eyes.iris);
   for (const side of [-1, 1]) {
     const ey = sculptor.eyeY(side);
     const [ex, , ez] = sculptor.surfaceAt(side * sculptor.eyeX, ey);
-    const m = new THREE.Matrix4()
-      .multiplyMatrices(scale, new THREE.Matrix4().makeTranslation(ex, ey, ez + 0.3 * eyeR - eyeR))
-      .multiply(new THREE.Matrix4().makeRotationY(-side * 0.06));
+    const m = new Matrix4()
+      .multiplyMatrices(scale, new Matrix4().makeTranslation(ex, ey, ez + 0.3 * eyeR - eyeR))
+      .multiply(new Matrix4().makeRotationY(-side * 0.06));
     const eye = eyeGeometries(eyeR, params.face.lidOpen, irisColor);
     parts.add(mats.sclera, eye.sclera, { matrix: m, label: nameFor(side, 'Eye') });
     parts.add(mats.iris, eye.iris, { matrix: m, label: nameFor(side, 'Iris') });
@@ -198,17 +198,17 @@ function buildTurban(params, sculptor, mats, headwear, hh) {
   const bottom = 0.66;
   const top = 1.26;
   const h = (top - bottom) / wraps;
-  const m = new THREE.Matrix4()
+  const m = new Matrix4()
     .makeScale(hh, hh, hh)
-    .multiply(new THREE.Matrix4().makeTranslation(0, 0.85, -0.03))
-    .multiply(new THREE.Matrix4().makeRotationX(-0.18))
-    .multiply(new THREE.Matrix4().makeTranslation(0, -0.85, 0));
+    .multiply(new Matrix4().makeTranslation(0, 0.85, -0.03))
+    .multiply(new Matrix4().makeRotationX(-0.18))
+    .multiply(new Matrix4().makeTranslation(0, -0.85, 0));
   for (let i = 0; i < wraps; i++) {
     // Each wrap overlaps the one below, like a shawl wound round and round.
     const y0 = bottom + i * h - 0.25 * h;
     const y1 = bottom + (i + 1) * h + 0.05 * h;
     const r = rx * (1 + 0.025 * i) * (1 + 0.012 * (i % 2));
-    const profile = (y) => r * (1 + 0.05 * Math.sin(Math.PI * THREE.MathUtils.clamp((y - y0) / (y1 - y0), 0, 1)));
+    const profile = (y) => r * (1 + 0.05 * Math.sin(Math.PI * MathUtils.clamp((y - y0) / (y1 - y0), 0, 1)));
     const surface = garmentSurface(profile, { depth, count: 9, folds: () => 0.015, phase: 0.4 });
     const g = garmentBand(surface, y0, y1, { steps: 4, segments: 28 });
     parts.add(mats.wool, g, { matrix: m, color: colors[i % colors.length], label: 'turban' });
@@ -257,7 +257,7 @@ function buildMaleGarments(params, dims, mats, parts) {
   if (c.sash) {
     parts.add(mats.wool, garmentBand(outer, -0.025 * H, 0.02 * H, { steps: 2, segments: 32 }), { color: c.sash[0], label: 'sash' });
     for (const [x, rot] of [[0.6, 0.08], [0.75, -0.05]]) {
-      const tail = new THREE.BoxGeometry(0.035 * H, 0.17 * H, 0.006 * H, 1, 3, 1);
+      const tail = new BoxGeometry(0.035 * H, 0.17 * H, 0.006 * H, 1, 3, 1);
       tail.translate(0, -0.085 * H, 0);
       tail.rotateZ(rot);
       tail.rotateY(x);
@@ -268,7 +268,7 @@ function buildMaleGarments(params, dims, mats, parts) {
     parts.add(mats.leather, garmentBand(outer, -0.012 * H, 0.012 * H, { steps: 1, segments: 32 }), { color: c.belt, label: 'belt' });
   }
   if (params.age >= 18) {
-    const pouch = new THREE.BoxGeometry(0.05 * H, 0.065 * H, 0.018 * H, 1, 1, 1);
+    const pouch = new BoxGeometry(0.05 * H, 0.065 * H, 0.018 * H, 1, 1, 1);
     pouch.translate(0, -0.04 * H, 0);
     pouch.rotateY(-1.1);
     pouch.translate(-waistR * 0.95, 0, waistR * 0.3);
@@ -277,7 +277,7 @@ function buildMaleGarments(params, dims, mats, parts) {
   if (c.neckerchief) {
     const scarf = garmentSurface(profileFn([[0.93 * ts, chestR * 0.8], [1.03 * ts, chestR * 0.6], [1.1 * ts, neckR * 1.32]]), { depth: 0.85, count: 6, folds: () => 0.03 });
     parts.add(mats.cotton, garmentBand(scarf, 0.93 * ts, 1.1 * ts, { steps: 3, segments: 28 }), { color: c.neckerchief, label: 'neckerchief' });
-    const tip = new THREE.ConeGeometry(0.045 * H, 0.08 * H, 3, 1);
+    const tip = new ConeGeometry(0.045 * H, 0.08 * H, 3, 1);
     tip.rotateX(Math.PI);
     tip.scale(1, 1, 0.25);
     tip.translate(0, 0.86 * ts, chestR * 0.68);
@@ -339,7 +339,7 @@ function buildFemaleGarments(params, dims, mats, parts) {
     const y = ts * 0.97 + i * spacing;
     const lowest = y - capeProfile(y) * Math.sin(tilt);
     const R = Math.max(neckR * 1.2, capeProfile(lowest) * 1.03 + tube);
-    const strand = new THREE.TorusGeometry(R, tube, 4, 22);
+    const strand = new TorusGeometry(R, tube, 4, 22);
     strand.rotateX(Math.PI / 2 + tilt);
     strand.scale(1, 1, 0.88);
     strand.translate(0, y, 0.004 * H);
@@ -360,7 +360,7 @@ function buildArm(side, params, dims, mats, torso, garmentRadius) {
   // Hang the arms just clear of the shirt / skirt at hand height.
   const handY = dims.torso - dims.armLength * 0.88;
   const clearance = garmentRadius(handY) * 1.04 + dims.hand * 0.12;
-  arm.userData.restZ = side * Math.asin(THREE.MathUtils.clamp((clearance - dims.shoulderHalf) / (dims.armLength * 0.88), 0.06, 0.4));
+  arm.userData.restZ = side * Math.asin(MathUtils.clamp((clearance - dims.shoulderHalf) / (dims.armLength * 0.88), 0.06, 0.4));
   arm.rotation.z = arm.userData.restZ;
   arm.userData.side = side;
 
@@ -373,7 +373,7 @@ function buildArm(side, params, dims, mats, torso, garmentRadius) {
   elbow.rotation.x = elbow.userData.restX;
   const fore = new PartBuilder();
   fore.add(mats.cotton, limbGeometry(dims.limb(0.026), dims.limb(0.021), dims.forearm * 0.97, { bulge: 0.05 }), { color: sleeve, label: 'sleeve' });
-  const cuffBand = new THREE.CylinderGeometry(dims.limb(0.0225), dims.limb(0.0225), 0.025 * dims.H, 12, 1, true);
+  const cuffBand = new CylinderGeometry(dims.limb(0.0225), dims.limb(0.0225), 0.025 * dims.H, 12, 1, true);
   cuffBand.translate(0, -dims.forearm * 0.92, 0);
   fore.add(mats.cotton, cuffBand, { color: cuff, label: 'cuff' });
   const wrist = limbGeometry(dims.limb(0.016), dims.limb(0.015), 0.04 * dims.H, { segments: 8 });
@@ -405,7 +405,7 @@ function buildLeg(side, params, dims, mats, body) {
   shin.add(cover.material, limbGeometry(dims.limb(0.033), dims.limb(0.02), dims.shin, { bulge: 0.14 }), { color: cover.color, label: cover.label });
   if (c.leggings) {
     // Garter tied below the knee.
-    const garter = new THREE.TorusGeometry(dims.limb(0.032), 0.004 * dims.H, 4, 14);
+    const garter = new TorusGeometry(dims.limb(0.032), 0.004 * dims.H, 4, 14);
     garter.rotateX(Math.PI / 2);
     garter.translate(0, -0.03 * dims.H, 0);
     shin.add(mats.wool, garter, { color: c.leggings === c.bands?.[0] ? c.bands[1] : c.bands?.[0] ?? c.leggings, label: 'garter' });
@@ -441,7 +441,7 @@ function materialsFor(params) {
 }
 
 /**
- * Creates a character as a THREE.Group standing on y = 0 and facing +Z.
+ * Creates a character as a Group standing on y = 0 and facing +Z.
  * Accepts parameters from `generateCharacterParams` (defaults to the
  * player) or `{ seed, variant }`.
  */
@@ -450,7 +450,7 @@ export function createCharacter(params = PLAYER_PARAMS) {
   const dims = bodyDimensions(p);
   const mats = materialsFor(p);
 
-  const character = new THREE.Group();
+  const character = new Group();
   character.name = 'character';
   const body = group('body', character, 0, dims.hipY, 0);
   body.userData.baseY = dims.hipY;
@@ -496,7 +496,7 @@ export function createCharacter(params = PLAYER_PARAMS) {
   character.userData.strideLength = dims.hipY * 1.65;
 
   updateCharacterIdle(character, 0);
-  const box = new THREE.Box3().setFromObject(character);
+  const box = new Box3().setFromObject(character);
   character.userData.height = box.max.y;
   return character;
 }
@@ -534,7 +534,7 @@ function withHidden(character, predicate, fn) {
 
 function visibleBox(root) {
   root.updateMatrixWorld(true);
-  const box = new THREE.Box3();
+  const box = new Box3();
   root.traverseVisible((o) => {
     if (o.isMesh) box.expandByObject(o, true);
   });
@@ -547,9 +547,9 @@ function visibleBox(root) {
  */
 export function measureProportions(character) {
   character.updateMatrixWorld(true);
-  const skull = new THREE.Box3().setFromObject(character.getObjectByName('skull-skin'), true);
+  const skull = new Box3().setFromObject(character.getObjectByName('skull-skin'), true);
   const body = withHidden(character, (o) => o.name === 'headwear' || o.material?.userData.kind === 'hair', () => visibleBox(character));
-  const full = new THREE.Box3().setFromObject(character, true);
+  const full = new Box3().setFromObject(character, true);
   const headHeight = skull.max.y - skull.min.y;
   const bodyHeight = body.max.y - body.min.y;
   return {
@@ -632,11 +632,11 @@ export function updateCharacterWalk(character, distance, elapsed = 0, { run = 0 
   const rig = character.userData.rig;
   if (!rig) return 0;
   const { body, torso, garments, head, leftArm, rightArm, leftElbow, rightElbow, leftLeg, rightLeg, leftKnee, rightKnee, leftFoot, rightFoot } = rig;
-  const k = THREE.MathUtils.clamp(run, 0, 1);
+  const k = MathUtils.clamp(run, 0, 1);
   const stride = character.userData.strideLength * (1 + 0.45 * k);
   const phase = (distance / stride) * TAU;
   const s = Math.sin(phase);
-  const lerp = THREE.MathUtils.lerp;
+  const lerp = MathUtils.lerp;
 
   const swing = lerp(0.42, 0.7, k);
   leftLeg.rotation.set(-s * swing - k * 0.1, 0, 0);

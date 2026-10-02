@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { ACESFilmicToneMapping, PCFShadowMap, PerspectiveCamera, Raycaster, SRGBColorSpace, Scene, Timer, Vector2, WebGLRenderer } from './procedural/index.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   createCharacter,
@@ -88,21 +88,21 @@ export class Game {
   constructor(container, { promptElement = null } = {}) {
     this.container = container;
     this.promptElement = promptElement;
-    this.timer = new THREE.Timer();
+    this.timer = new Timer();
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.shadowMap.enabled = true;
     // PCF with a per-light radius gives soft shadow edges (PCFSoftShadowMap
     // was removed from three.js).
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.shadowMap.type = PCFShadowMap;
+    this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.outputColorSpace = SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
 
-    this.scene = new THREE.Scene();
+    this.scene = new Scene();
     this.world = createWorld(this.scene);
 
     this.character = createCharacter();
@@ -112,7 +112,7 @@ export class Game {
     this.npcs = createNpcs();
     this.scene.add(...this.npcs);
 
-    this.camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 250);
+    this.camera = new PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 250);
     this.camera.position.set(2.2, 1.9, 4.2);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -129,7 +129,7 @@ export class Game {
 
     // Hover highlighting of interactive objects.
     this.highlighter = new Highlighter();
-    this.raycaster = new THREE.Raycaster();
+    this.raycaster = new Raycaster();
     this.pointer = null;
     this.interactive = collectInteractive(this.scene);
 
@@ -179,7 +179,7 @@ export class Game {
 
   /** Sets the pointer in normalised device coordinates, or null when it leaves the canvas. */
   setPointer(x, y) {
-    this.pointer = x === null || x === undefined ? null : new THREE.Vector2(x, y);
+    this.pointer = x === null || x === undefined ? null : new Vector2(x, y);
   }
 
   /** Re-targets the hover highlight and prompt. Returns the targeted object (or null). */

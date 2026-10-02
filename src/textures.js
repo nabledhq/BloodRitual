@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RGBAFormat, RepeatWrapping, SRGBColorSpace } from './procedural/index.js';
 import { fbm, valueNoise, smoothstep, clamp01, lerp } from './noise.js';
 
 /**
@@ -21,11 +21,11 @@ function mix3(a, b, t) {
 }
 
 function dataTexture(data, size, colorSpace) {
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  const texture = new DataTexture(data, size, size, RGBAFormat);
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
   texture.anisotropy = 4;
   texture.colorSpace = colorSpace;
@@ -82,9 +82,9 @@ export function generateSet(name, sample, { size = TEXTURE_SIZE, normalStrength 
 
   const set = {
     name,
-    map: dataTexture(albedo, size, THREE.SRGBColorSpace),
-    normalMap: dataTexture(normal, size, THREE.NoColorSpace),
-    roughnessMap: dataTexture(rough, size, THREE.NoColorSpace),
+    map: dataTexture(albedo, size, SRGBColorSpace),
+    normalMap: dataTexture(normal, size, NoColorSpace),
+    roughnessMap: dataTexture(rough, size, NoColorSpace),
   };
   for (const [kind, tex] of Object.entries(set)) {
     if (tex.isTexture) tex.name = `${name}.${kind}`;

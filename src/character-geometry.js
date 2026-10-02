@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BufferGeometry, CapsuleGeometry, CircleGeometry, Color, CylinderGeometry, Float32BufferAttribute, LatheGeometry, MathUtils, Matrix4, Mesh, SphereGeometry, TorusGeometry, Vector2, Vector3, mergeGeometries } from './procedural/index.js';
 import { valueNoise, smoothstep, lerp } from './noise.js';
 
 /**
@@ -13,7 +12,7 @@ import { valueNoise, smoothstep, lerp } from './noise.js';
  */
 
 const TAU = Math.PI * 2;
-const WHITE = new THREE.Color(1, 1, 1);
+const WHITE = new Color(1, 1, 1);
 
 // ---- Merging ------------------------------------------------------------------
 
@@ -26,11 +25,11 @@ function prepare(geometry, color = WHITE) {
   const count = g.attributes.position.count;
   if (!g.index) g.setIndex(Array.from({ length: count }, (_, i) => i));
   if (!g.attributes.normal) g.computeVertexNormals();
-  if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(count * 2), 2));
+  if (!g.attributes.uv) g.setAttribute('uv', new Float32BufferAttribute(new Float32Array(count * 2), 2));
   if (!g.attributes.color) {
     const c = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) c.set([color.r, color.g, color.b], i * 3);
-    g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
+    g.setAttribute('color', new Float32BufferAttribute(c, 3));
   }
   g.morphAttributes = {};
   g.clearGroups();
@@ -49,12 +48,12 @@ export class PartBuilder {
 
   /**
    * Adds `geometry` (transformed by `matrix`) to the batch for `material`.
-   * `color` (a hex or THREE.Color) fills the vertex colour unless the
+   * `color` (a hex or Color) fills the vertex colour unless the
    * geometry already has one. `label` names the item (e.g. 'turban').
    */
   add(material, geometry, { matrix = null, color = null, label = null } = {}) {
     if (color !== null) geometry.deleteAttribute('color');
-    const g = prepare(geometry, color === null ? WHITE : color.isColor ? color : new THREE.Color(color));
+    const g = prepare(geometry, color === null ? WHITE : color.isColor ? color : new Color(color));
     if (matrix) g.applyMatrix4(matrix);
     if (!this.pieces.has(material)) this.pieces.set(material, { geometries: [], labels: new Set() });
     const entry = this.pieces.get(material);
@@ -69,7 +68,7 @@ export class PartBuilder {
     for (const [material, { geometries, labels }] of this.pieces) {
       const geometry = geometries.length === 1 ? geometries[0] : mergeGeometries(geometries, false);
       for (const g of geometries) if (g !== geometry) g.dispose();
-      const mesh = new THREE.Mesh(geometry, material);
+      const mesh = new Mesh(geometry, material);
       mesh.name = `${group.name}-${material.userData.kind}`;
       mesh.castShadow = castShadow(material);
       mesh.receiveShadow = true;
@@ -93,7 +92,7 @@ export function smoothSeams(geometry) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(i);
   }
-  const n = new THREE.Vector3();
+  const n = new Vector3();
   for (const indices of groups.values()) {
     if (indices.length < 2) continue;
     n.set(0, 0, 0);
@@ -108,7 +107,7 @@ export function smoothSeams(geometry) {
 export function colorAttribute(geometry, colorAt) {
   const pos = geometry.attributes.position;
   const c = new Float32Array(pos.count * 3);
-  const p = new THREE.Vector3();
+  const p = new Vector3();
   for (let i = 0; i < pos.count; i++) {
     p.fromBufferAttribute(pos, i);
     const col = colorAt(p, i);
@@ -116,7 +115,7 @@ export function colorAttribute(geometry, colorAt) {
     c[i * 3 + 1] = col[1];
     c[i * 3 + 2] = col[2];
   }
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(c, 3));
+  geometry.setAttribute('color', new Float32BufferAttribute(c, 3));
   return geometry;
 }
 
@@ -211,7 +210,7 @@ export function createHeadSculpt(face) {
 
   /** Sphere-space direction for an approximate target on the face. */
   function surfaceAt(X, ny, front = 1) {
-    const x = THREE.MathUtils.clamp(X / W, -0.49, 0.49);
+    const x = MathUtils.clamp(X / W, -0.49, 0.49);
     const y = ny - 0.5;
     const z = front * Math.sqrt(Math.max(0.0001, 0.25 - x * x - y * y));
     return sculpt(x, y, z);
@@ -222,7 +221,7 @@ export function createHeadSculpt(face) {
 
 /** The sculpted head mesh (head units) with skin-tone variation in vertex colours. */
 export function headGeometry(sculptor, face, redness) {
-  const geometry = new THREE.SphereGeometry(0.5, 44, 34, -Math.PI / 2);
+  const geometry = new SphereGeometry(0.5, 44, 34, -Math.PI / 2);
   const pos = geometry.attributes.position;
   let minY = Infinity;
   let maxY = -Infinity;
@@ -268,16 +267,16 @@ export function headGeometry(sculptor, face, redness) {
 export function earGeometry(side, size) {
   const h = 0.27 * (0.88 + 0.3 * size);
   const parts = [];
-  const concha = new THREE.SphereGeometry(1, 10, 8);
+  const concha = new SphereGeometry(1, 10, 8);
   concha.scale(0.035, h * 0.5, h * 0.32);
   parts.push(concha);
-  const helix = new THREE.TorusGeometry(h * 0.33, 0.016, 5, 14, Math.PI * 1.55);
+  const helix = new TorusGeometry(h * 0.33, 0.016, 5, 14, Math.PI * 1.55);
   helix.rotateZ(-Math.PI * 0.32);
   helix.scale(1, 1.45, 1);
   helix.rotateY(Math.PI / 2);
   helix.translate(0.012, 0.01, -0.01);
   parts.push(helix);
-  const lobe = new THREE.SphereGeometry(h * 0.13, 8, 6);
+  const lobe = new SphereGeometry(h * 0.13, 8, 6);
   lobe.scale(0.45, 1, 0.9);
   lobe.translate(0.004, -h * 0.4, 0.005);
   parts.push(lobe);
@@ -295,20 +294,20 @@ export function earGeometry(side, size) {
  * and an eyelash card. Returns geometries per material key.
  */
 export function eyeGeometries(r, lidOpen, irisColor) {
-  const sclera = new THREE.SphereGeometry(r, 12, 7, 0, TAU, 0.5, Math.PI - 0.5);
+  const sclera = new SphereGeometry(r, 12, 7, 0, TAU, 0.5, Math.PI - 0.5);
   sclera.rotateX(Math.PI / 2);
   const ri = r * Math.sin(0.5);
-  const iris = new THREE.CircleGeometry(ri, 20);
+  const iris = new CircleGeometry(ri, 20);
   iris.translate(0, 0, r * Math.cos(0.5) + 0.0005);
   colorAttribute(iris, () => [irisColor.r, irisColor.g, irisColor.b]);
-  const cornea = new THREE.SphereGeometry(r * 1.01, 12, 3, 0, TAU, 0, 0.62);
+  const cornea = new SphereGeometry(r * 1.01, 12, 3, 0, TAU, 0, 0.62);
   cornea.rotateX(Math.PI / 2);
   cornea.scale(1, 1, 1.05);
 
   // Eyelids: shells around the eyeball, open by `lidOpen`.
   const open = lerp(1.22, 1.45, lidOpen);
-  const upper = new THREE.SphereGeometry(r * 1.1, 14, 6, -0.25, Math.PI + 0.5, 0, open);
-  const lower = new THREE.SphereGeometry(r * 1.07, 14, 3, -0.2, Math.PI + 0.4, Math.PI - 0.95, 0.95);
+  const upper = new SphereGeometry(r * 1.1, 14, 6, -0.25, Math.PI + 0.5, 0, open);
+  const lower = new SphereGeometry(r * 1.07, 14, 3, -0.2, Math.PI + 0.4, Math.PI - 0.95, 0.95);
   upper.rotateX(0.12);
 
   // Lash card along the upper lid margin, angled out and up.
@@ -318,10 +317,10 @@ export function eyeGeometries(r, lidOpen, irisColor) {
   const steps = 10;
   for (let i = 0; i <= steps; i++) {
     const phi = 0.35 + ((Math.PI - 0.7) * i) / steps;
-    const dir = new THREE.Vector3(-Math.cos(phi) * Math.sin(open), Math.cos(open), Math.sin(phi) * Math.sin(open));
-    dir.applyAxisAngle(new THREE.Vector3(1, 0, 0), 0.12);
+    const dir = new Vector3(-Math.cos(phi) * Math.sin(open), Math.cos(open), Math.sin(phi) * Math.sin(open));
+    dir.applyAxisAngle(new Vector3(1, 0, 0), 0.12);
     const base = dir.clone().multiplyScalar(r * 1.1);
-    const tip = base.clone().add(dir.clone().multiplyScalar(r * 0.18)).add(new THREE.Vector3(0, r * 0.22, 0));
+    const tip = base.clone().add(dir.clone().multiplyScalar(r * 0.18)).add(new Vector3(0, r * 0.22, 0));
     const len = Math.sin((i / steps) * Math.PI) * 0.6 + 0.4;
     tip.lerp(base, 1 - len);
     positions.push(base.x, base.y, base.z, tip.x, tip.y, tip.z);
@@ -331,9 +330,9 @@ export function eyeGeometries(r, lidOpen, irisColor) {
       indices.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
     }
   }
-  const lashes = new THREE.BufferGeometry();
-  lashes.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  lashes.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const lashes = new BufferGeometry();
+  lashes.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  lashes.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   lashes.setIndex(indices);
   lashes.computeVertexNormals();
   return { sclera, iris, cornea, lids: [upper, lower], lashes };
@@ -358,9 +357,9 @@ export function strip(points, sideDirs, width, { vStart = 0, vEnd = 1, uRepeat =
       indices.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
     }
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   g.setIndex(indices);
   g.computeVertexNormals();
   return g;
@@ -383,13 +382,13 @@ export function hairlineHeight(a, style) {
  */
 export function hairGeometries(headGeom, sculptor, hair, rng) {
   const style = hair.style;
-  const pole = new THREE.Vector3(0, style === 'bun' ? 0.35 : -0.55, -1).normalize();
-  const centre = new THREE.Vector3(0, 0.55, 0);
+  const pole = new Vector3(0, style === 'bun' ? 0.35 : -0.55, -1).normalize();
+  const centre = new Vector3(0, 0.55, 0);
   const pos = headGeom.attributes.position;
   const nor = headGeom.attributes.normal;
   const index = headGeom.index;
   const inside = [];
-  const p = new THREE.Vector3();
+  const p = new Vector3();
   for (let i = 0; i < pos.count; i++) {
     p.fromBufferAttribute(pos, i);
     const a = Math.atan2(p.x, p.z);
@@ -397,13 +396,13 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
   }
   const positions = [];
   const uvs = [];
-  const basis = new THREE.Vector3(1, 0, 0);
+  const basis = new Vector3(1, 0, 0);
   const lift = 0.014;
-  const d = new THREE.Vector3();
-  const tmp = new THREE.Vector3();
+  const d = new Vector3();
+  const tmp = new Vector3();
   const uOf = (dir) => {
     tmp.copy(dir).addScaledVector(pole, -dir.dot(pole));
-    const binormal = new THREE.Vector3().crossVectors(pole, basis);
+    const binormal = new Vector3().crossVectors(pole, basis);
     return (Math.atan2(tmp.dot(binormal), tmp.dot(basis)) / TAU) * 12;
   };
   for (let f = 0; f < index.count; f += 3) {
@@ -413,12 +412,12 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
     const tri = ids.map((i) => {
       p.fromBufferAttribute(pos, i);
       d.copy(p).sub(centre).normalize();
-      const along = Math.acos(THREE.MathUtils.clamp(-d.dot(pole), -1, 1)) / Math.PI;
+      const along = Math.acos(MathUtils.clamp(-d.dot(pole), -1, 1)) / Math.PI;
       const a = Math.atan2(p.x, p.z);
       const fromLine = p.y - hairlineHeight(a, style);
       // Vertices just outside the hairline get the transparent strand tips, softening the edge.
-      const v = THREE.MathUtils.clamp(0.32 + fromLine * 10 + along * 0.2, 0.02, 0.99);
-      const q = p.clone().addScaledVector(new THREE.Vector3().fromBufferAttribute(nor, i), lift);
+      const v = MathUtils.clamp(0.32 + fromLine * 10 + along * 0.2, 0.02, 0.99);
+      const q = p.clone().addScaledVector(new Vector3().fromBufferAttribute(nor, i), lift);
       return { q, u: uOf(d), v };
     });
     // Keep the strand-wise U continuous across the wrap-around.
@@ -429,9 +428,9 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
       uvs.push(t.u, t.v);
     }
   }
-  const cap = new THREE.BufferGeometry();
-  cap.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  cap.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const cap = new BufferGeometry();
+  cap.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  cap.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   cap.computeVertexNormals();
   smoothSeams(cap);
   const result = [cap];
@@ -440,12 +439,12 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
   const { sculpt } = sculptor;
   const normalAt = (dir) => {
     const e = 0.01;
-    const a0 = new THREE.Vector3(...sculpt(dir.x * 0.5, dir.y * 0.5, dir.z * 0.5));
-    const t1 = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0.001)).normalize();
-    const t2 = new THREE.Vector3().crossVectors(dir, t1).normalize();
-    const b = new THREE.Vector3(...sculpt(...dir.clone().addScaledVector(t1, e).normalize().multiplyScalar(0.5).toArray()));
-    const c = new THREE.Vector3(...sculpt(...dir.clone().addScaledVector(t2, e).normalize().multiplyScalar(0.5).toArray()));
-    const n = new THREE.Vector3().crossVectors(b.sub(a0), c.sub(a0)).normalize();
+    const a0 = new Vector3(...sculpt(dir.x * 0.5, dir.y * 0.5, dir.z * 0.5));
+    const t1 = new Vector3().crossVectors(dir, new Vector3(0, 1, 0.001)).normalize();
+    const t2 = new Vector3().crossVectors(dir, t1).normalize();
+    const b = new Vector3(...sculpt(...dir.clone().addScaledVector(t1, e).normalize().multiplyScalar(0.5).toArray()));
+    const c = new Vector3(...sculpt(...dir.clone().addScaledVector(t2, e).normalize().multiplyScalar(0.5).toArray()));
+    const n = new Vector3().crossVectors(b.sub(a0), c.sub(a0)).normalize();
     if (n.dot(dir) < 0) n.negate();
     return { point: a0, normal: n };
   };
@@ -455,10 +454,10 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
     // Root on the hairline ring, spread around the head.
     const a = (c / cardCount) * TAU - Math.PI + (rng() - 0.5) * 0.3;
     const rootY = hairlineHeight(a, style) + 0.03 + rng() * 0.05;
-    const start = new THREE.Vector3(Math.sin(a) * 0.45, (rootY - 0.5) * 2, Math.cos(a) * 0.9).normalize();
+    const start = new Vector3(Math.sin(a) * 0.45, (rootY - 0.5) * 2, Math.cos(a) * 0.9).normalize();
     // Hair is pulled back smoothly from the face: no cards across the front.
     if (Math.abs(a) < 0.9 || (style !== 'long' && start.dot(pole) > 0.7)) continue;
-    const end = style === 'long' ? new THREE.Vector3(Math.sin(a) * 0.35, -0.6, -0.75).normalize() : pole.clone();
+    const end = style === 'long' ? new Vector3(Math.sin(a) * 0.35, -0.6, -0.75).normalize() : pole.clone();
     const steps = 7;
     const points = [];
     const sides = [];
@@ -472,16 +471,16 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
       points.push(point);
       if (last) {
         const along = point.clone().sub(last).normalize();
-        sides.push(new THREE.Vector3().crossVectors(along, normal).normalize());
+        sides.push(new Vector3().crossVectors(along, normal).normalize());
       }
       last = point;
     }
     // Loose long hair continues down the back.
     if (style === 'long') {
-      const n = new THREE.Vector3(Math.sin(a) * 0.3, 0, -1).normalize();
+      const n = new Vector3(Math.sin(a) * 0.3, 0, -1).normalize();
       for (let i = 1; i <= 4; i++) {
-        points.push(last.clone().add(new THREE.Vector3(Math.sin(a) * 0.02 * i, -0.17 * i, -0.015 * i)));
-        sides.push(new THREE.Vector3().crossVectors(new THREE.Vector3(0, -1, 0), n).normalize());
+        points.push(last.clone().add(new Vector3(Math.sin(a) * 0.02 * i, -0.17 * i, -0.015 * i)));
+        sides.push(new Vector3().crossVectors(new Vector3(0, -1, 0), n).normalize());
       }
     }
     sides.unshift(sides[0]);
@@ -490,7 +489,7 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
   }
 
   if (style === 'bun') {
-    const bun = new THREE.SphereGeometry(0.15, 14, 10);
+    const bun = new SphereGeometry(0.15, 14, 10);
     bun.scale(1.15, 0.95, 0.85);
     const uv = bun.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 4, 0.6 + 0.39 * uv.getY(i));
@@ -512,13 +511,13 @@ export function browGeometry(sculptor, side, thickness) {
     const X = side * (sculptor.eyeX - 0.06 + t * 0.15);
     const ny = ey + 0.07 + 0.016 * Math.sin(t * Math.PI * 0.9) - 0.012 * t;
     const [x, y, z] = sculptor.surfaceAt(X, ny);
-    points.push(new THREE.Vector3(x, y, z + 0.006));
+    points.push(new Vector3(x, y, z + 0.006));
   }
   for (let i = 0; i <= steps; i++) {
     const a = points[Math.max(0, i - 1)];
     const b = points[Math.min(steps, i + 1)];
     const along = b.clone().sub(a).normalize();
-    sides.push(new THREE.Vector3().crossVectors(along, new THREE.Vector3(0, 0, 1)).normalize().multiplyScalar(side));
+    sides.push(new Vector3().crossVectors(along, new Vector3(0, 0, 1)).normalize().multiplyScalar(side));
   }
   return strip(points, sides, (t) => thickness * (1.1 - 0.7 * t), { vStart: 0.12, vEnd: 0.5, uRepeat: 0.35 });
 }
@@ -526,7 +525,7 @@ export function browGeometry(sculptor, side, thickness) {
 // ---- Hands and feet -------------------------------------------------------------
 
 function capsuleAlong(radius, length, matrix) {
-  const g = new THREE.CapsuleGeometry(radius, Math.max(0.0001, length - radius * 2), 1, 5);
+  const g = new CapsuleGeometry(radius, Math.max(0.0001, length - radius * 2), 1, 5);
   g.translate(0, -length / 2, 0);
   g.applyMatrix4(matrix);
   return prepare(g);
@@ -540,7 +539,7 @@ function capsuleAlong(radius, length, matrix) {
 export function handGeometry(length, side, curl = 1) {
   const hl = length;
   const parts = [];
-  const palm = new THREE.SphereGeometry(1, 8, 6);
+  const palm = new SphereGeometry(1, 8, 6);
   palm.scale(0.2 * hl, 0.28 * hl, 0.085 * hl);
   palm.translate(0, -0.24 * hl, 0);
   parts.push(prepare(palm));
@@ -552,31 +551,31 @@ export function handGeometry(length, side, curl = 1) {
   ];
   const segments = [0.47, 0.3, 0.23];
   for (const f of fingers) {
-    const m = new THREE.Matrix4().makeTranslation(side * f.x * hl, f.y * hl, 0.01 * hl);
+    const m = new Matrix4().makeTranslation(side * f.x * hl, f.y * hl, 0.01 * hl);
     let r = f.r * hl;
     segments.forEach((share, i) => {
-      m.multiply(new THREE.Matrix4().makeRotationX(-f.curl[i] * curl));
+      m.multiply(new Matrix4().makeRotationX(-f.curl[i] * curl));
       const len = f.len * share * hl;
       parts.push(capsuleAlong(r, len + r * 0.6, m));
-      m.multiply(new THREE.Matrix4().makeTranslation(0, -len, 0));
+      m.multiply(new Matrix4().makeTranslation(0, -len, 0));
       r *= 0.9;
     });
   }
   // Thumb: from the base of the palm, forward and down, resting against the index finger.
-  const t = new THREE.Matrix4()
+  const t = new Matrix4()
     .makeTranslation(side * 0.17 * hl, -0.16 * hl, 0.03 * hl)
-    .multiply(new THREE.Matrix4().makeRotationZ(side * 0.45))
-    .multiply(new THREE.Matrix4().makeRotationX(-0.55));
-  const mound = new THREE.SphereGeometry(1, 8, 6);
+    .multiply(new Matrix4().makeRotationZ(side * 0.45))
+    .multiply(new Matrix4().makeRotationX(-0.55));
+  const mound = new SphereGeometry(1, 8, 6);
   mound.scale(0.06 * hl, 0.12 * hl, 0.06 * hl);
   mound.translate(0, -0.06 * hl, 0);
   mound.applyMatrix4(t);
   parts.push(prepare(mound));
-  t.multiply(new THREE.Matrix4().makeTranslation(0, -0.13 * hl, 0));
+  t.multiply(new Matrix4().makeTranslation(0, -0.13 * hl, 0));
   for (const [len, bend] of [[0.2, 0.25], [0.17, 0.3]]) {
-    t.multiply(new THREE.Matrix4().makeRotationX(-bend * curl));
+    t.multiply(new Matrix4().makeRotationX(-bend * curl));
     parts.push(capsuleAlong(0.05 * hl, len * hl, t));
-    t.multiply(new THREE.Matrix4().makeTranslation(0, -len * hl, 0));
+    t.multiply(new Matrix4().makeTranslation(0, -len * hl, 0));
   }
   return mergeGeometries(parts, false);
 }
@@ -587,7 +586,7 @@ export function handGeometry(length, side, curl = 1) {
  */
 export function footGeometry({ length, width, ankleHeight, ankleRadius, moccasin }) {
   const parts = [];
-  const foot = new THREE.SphereGeometry(1, 12, 8);
+  const foot = new SphereGeometry(1, 12, 8);
   const pos = foot.attributes.position;
   const sole = -ankleHeight;
   for (let i = 0; i < pos.count; i++) {
@@ -604,19 +603,19 @@ export function footGeometry({ length, width, ankleHeight, ankleRadius, moccasin
   smoothSeams(foot);
   parts.push(prepare(foot));
   if (moccasin) {
-    const cuff = new THREE.CylinderGeometry(ankleRadius * 1.25, ankleRadius * 1.15, ankleHeight * 1.3, 12, 1, true);
+    const cuff = new CylinderGeometry(ankleRadius * 1.25, ankleRadius * 1.15, ankleHeight * 1.3, 12, 1, true);
     cuff.translate(0, -ankleHeight * 0.1, 0);
     parts.push(prepare(cuff));
     // Gathered seam over the toes.
-    const seam = new THREE.CapsuleGeometry(width * 0.06, length * 0.32, 2, 5);
+    const seam = new CapsuleGeometry(width * 0.06, length * 0.32, 2, 5);
     seam.rotateX(Math.PI / 2 + 0.25);
     seam.translate(0, sole + ankleHeight * 0.62, length * 0.48);
     parts.push(prepare(seam));
   } else {
-    const ankle = new THREE.CylinderGeometry(ankleRadius, ankleRadius * 1.1, ankleHeight * 0.9, 10, 1, true);
+    const ankle = new CylinderGeometry(ankleRadius, ankleRadius * 1.1, ankleHeight * 0.9, 10, 1, true);
     parts.push(prepare(ankle));
     for (let i = 0; i < 5; i++) {
-      const toe = new THREE.SphereGeometry(width * (i === 0 ? 0.13 : 0.09 - i * 0.006), 6, 5);
+      const toe = new SphereGeometry(width * (i === 0 ? 0.13 : 0.09 - i * 0.006), 6, 5);
       toe.scale(1, 0.8, 1.3);
       toe.translate(width * (0.3 - i * 0.16), sole + width * 0.08, length * (0.68 - i * 0.025 - (i === 0 ? 0 : 0.02)));
       parts.push(prepare(toe));
@@ -627,14 +626,14 @@ export function footGeometry({ length, width, ankleHeight, ankleRadius, moccasin
 
 /** Rounded, tapering limb hanging from y = 0 down to y = -length. */
 export function limbGeometry(rTop, rBottom, length, { bulge = 0.08, segments = 12, depth = 1, cap = 1 } = {}) {
-  const pts = [new THREE.Vector2(0, -length - rBottom * 0.5), new THREE.Vector2(rBottom * 0.8, -length - rBottom * 0.3)];
+  const pts = [new Vector2(0, -length - rBottom * 0.5), new Vector2(rBottom * 0.8, -length - rBottom * 0.3)];
   for (let i = 0; i <= 6; i++) {
     const t = i / 6;
     const r = lerp(rBottom, rTop, t) * (1 + bulge * Math.sin(t * Math.PI));
-    pts.push(new THREE.Vector2(r, -length + t * length));
+    pts.push(new Vector2(r, -length + t * length));
   }
-  pts.push(new THREE.Vector2(rTop * 0.8, rTop * 0.45 * cap), new THREE.Vector2(0, rTop * 0.65 * cap));
-  const g = new THREE.LatheGeometry(pts, segments, Math.PI);
+  pts.push(new Vector2(rTop * 0.8, rTop * 0.45 * cap), new Vector2(0, rTop * 0.65 * cap));
+  const g = new LatheGeometry(pts, segments, Math.PI);
   g.scale(1, 1, depth);
   g.computeVertexNormals();
   return smoothSeams(g);
@@ -690,9 +689,9 @@ export function garmentBand(surface, y0, y1, { steps = 3, segments = SEGMENTS, u
       indices.push(a, a + 1, a + row, a + 1, a + row + 1, a + row);
     }
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
   g.setIndex(indices);
   g.computeVertexNormals();
   return smoothSeams(g);
@@ -704,7 +703,7 @@ export function garmentBand(surface, y0, y1, { steps = 3, segments = SEGMENTS, u
  * triangles. Colours are written as vertex colours.
  */
 export function patchworkBand(surface, y0, y1, { blocks = 24, colors, pattern = 'bars', inset = 0.002 }) {
-  const [ca, cb] = colors.map((c) => new THREE.Color(c));
+  const [ca, cb] = colors.map((c) => new Color(c));
   const positions = [];
   const uvs = [];
   const cols = [];
@@ -738,10 +737,10 @@ export function patchworkBand(surface, y0, y1, { blocks = 24, colors, pattern = 
       }
     }
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+  g.setAttribute('color', new Float32BufferAttribute(cols, 3));
   g.computeVertexNormals();
   return smoothSeams(g);
 }

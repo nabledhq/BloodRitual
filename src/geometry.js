@@ -1,5 +1,4 @@
-import * as THREE from 'three';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BufferAttribute, BufferGeometry, Euler, Float32BufferAttribute, IcosahedronGeometry, Matrix3, Matrix4, Quaternion, Vector3, mergeVertices } from './procedural/index.js';
 import { fbm } from './noise.js';
 
 /**
@@ -18,14 +17,14 @@ export class MeshBuilder {
     return this.positions.length / 3;
   }
 
-  /** Appends `geometry` transformed by `matrix` (a THREE.Matrix4). */
-  addGeometry(geometry, matrix = new THREE.Matrix4()) {
+  /** Appends `geometry` transformed by `matrix` (a Matrix4). */
+  addGeometry(geometry, matrix = new Matrix4()) {
     const pos = geometry.attributes.position;
     const nor = geometry.attributes.normal;
     const uv = geometry.attributes.uv;
-    const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrix);
+    const normalMatrix = new Matrix3().getNormalMatrix(matrix);
     const offset = this.vertexCount;
-    const v = new THREE.Vector3();
+    const v = new Vector3();
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(matrix);
       this.positions.push(v.x, v.y, v.z);
@@ -50,9 +49,9 @@ export class MeshBuilder {
   addStrip(points, side, widths) {
     const offset = this.vertexCount;
     const n = points.length;
-    const t = new THREE.Vector3();
-    const s = new THREE.Vector3();
-    const normal = new THREE.Vector3();
+    const t = new Vector3();
+    const s = new Vector3();
+    const normal = new Vector3();
     for (let i = 0; i < n; i++) {
       const p = points[i];
       t.subVectors(points[Math.min(i + 1, n - 1)], points[Math.max(i - 1, 0)]).normalize();
@@ -73,10 +72,10 @@ export class MeshBuilder {
   }
 
   build() {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
-    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(this.positions, 3));
+    geometry.setAttribute('normal', new Float32BufferAttribute(this.normals, 3));
+    geometry.setAttribute('uv', new Float32BufferAttribute(this.uvs, 2));
     geometry.setIndex(this.indices);
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
@@ -87,20 +86,20 @@ export class MeshBuilder {
 /** Builds a Matrix4 from a position, Euler rotation (x, y, z) and scale. */
 export function compose(position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1]) {
   const s = typeof scale === 'number' ? [scale, scale, scale] : scale;
-  return new THREE.Matrix4().compose(
-    new THREE.Vector3(...position),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)),
-    new THREE.Vector3(...s),
+  return new Matrix4().compose(
+    new Vector3(...position),
+    new Quaternion().setFromEuler(new Euler(...rotation)),
+    new Vector3(...s),
   );
 }
 
 /** Matrix that places a unit-height Y-aligned primitive between points a and b. */
 export function between(a, b, radiusScale = 1) {
-  const dir = new THREE.Vector3().subVectors(b, a);
+  const dir = new Vector3().subVectors(b, a);
   const length = dir.length();
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-  const mid = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5);
-  return new THREE.Matrix4().compose(mid, q, new THREE.Vector3(radiusScale, length, radiusScale));
+  const q = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize());
+  const mid = new Vector3().addVectors(a, b).multiplyScalar(0.5);
+  return new Matrix4().compose(mid, q, new Vector3(radiusScale, length, radiusScale));
 }
 
 /**
@@ -110,8 +109,8 @@ export function between(a, b, radiusScale = 1) {
 export function roughen(geometry, amount, { frequency = 3, seed = 0 } = {}) {
   const pos = geometry.attributes.position;
   const nor = geometry.attributes.normal;
-  const v = new THREE.Vector3();
-  const n = new THREE.Vector3();
+  const v = new Vector3();
+  const n = new Vector3();
   for (let i = 0; i < pos.count; i++) {
     v.fromBufferAttribute(pos, i);
     n.fromBufferAttribute(nor, i);
@@ -124,7 +123,7 @@ export function roughen(geometry, amount, { frequency = 3, seed = 0 } = {}) {
 
 /** A lumpy, closed, smooth-shaded blob (stones, foliage clumps). */
 export function blob(radius, { detail = 2, amount = 0.35, frequency = 2.5, seed = 0 } = {}) {
-  let geometry = new THREE.IcosahedronGeometry(radius, detail);
+  let geometry = new IcosahedronGeometry(radius, detail);
   geometry.deleteAttribute('uv');
   geometry.deleteAttribute('normal');
   geometry = mergeVertices(geometry);
@@ -138,6 +137,6 @@ export function blob(radius, { detail = 2, amount = 0.35, frequency = 2.5, seed 
     uv[i * 2] = (pos.getX(i) + pos.getZ(i) * 0.7) / radius;
     uv[i * 2 + 1] = (pos.getY(i) - pos.getZ(i) * 0.4) / radius;
   }
-  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geometry.setAttribute('uv', new BufferAttribute(uv, 2));
   return geometry;
 }
