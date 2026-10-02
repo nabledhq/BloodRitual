@@ -1,4 +1,4 @@
-import { KEY_BINDINGS, HELP_KEY } from './input.js';
+import { KEY_BINDINGS, HELP_KEY, INTERACT_KEY, REPUTATION_KEY } from './input.js';
 
 /** Human-readable names for the key codes used in `KEY_BINDINGS`. */
 const KEY_LABELS = {
@@ -7,7 +7,9 @@ const KEY_LABELS = {
   KeyS: 'S',
   KeyD: 'D',
   KeyC: 'C',
+  KeyE: 'E',
   KeyH: 'H',
+  KeyR: 'R',
   ArrowUp: '↑',
   ArrowDown: '↓',
   ArrowLeft: '←',
@@ -36,6 +38,8 @@ export const CONTROLS = Object.freeze([
   { action: 'Crouch (hold)', keys: keyLabels(KEY_BINDINGS.crouch) },
   { action: 'Look around', keys: ['Drag mouse'] },
   { action: 'Zoom', keys: ['Scroll'] },
+  { action: 'Talk to a villager', keys: keyLabels([INTERACT_KEY]) },
+  { action: 'Show / hide reputation', keys: keyLabels([REPUTATION_KEY]) },
   { action: 'Show / hide this panel', keys: keyLabels([HELP_KEY]) },
 ]);
 
@@ -45,9 +49,11 @@ export const CONTROL_HINTS = Object.freeze([
   'Hold Shift while moving to run.',
   'Press Space while moving to jump over obstacles.',
   'Hold C to crouch.',
+  'Stand next to a villager and press E, then a number key to choose what to do.',
+  'What you do changes how each group sees you; press R to see where you stand.',
 ]);
 
-function escapeHtml(text) {
+export function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 

@@ -16,7 +16,9 @@ Then open the URL Vite prints (usually http://localhost:5173). You will see
 your character standing in a camp in the Florida Everglades around 1900: a
 palmetto-thatched chickee, a star fire with an iron kettle, a dugout canoe by
 a tannin-dark pond, cypress, cabbage palms, saw palmetto and sawgrass, and
-seven villagers of all ages going about their day. A **How to Play** panel listing the controls
+seven villagers of all ages going about their day. Walk up to a villager
+and press `E` to interact; what you do changes your reputation with the
+camp's factions (press `R` to see it). A **How to Play** panel listing the controls
 is shown when the game starts; press `H` to hide or show it again.
 
 ## Controls
@@ -35,6 +37,8 @@ is looking.
 | Crouch (hold)          | `C`              |
 | Look around            | `Drag mouse`     |
 | Zoom                   | `Scroll`         |
+| Talk to a villager     | `E`              |
+| Show / hide reputation | `R`              |
 | Show / hide this panel | `H`              |
 
 Tips:
@@ -43,6 +47,8 @@ Tips:
 - Hold Shift while moving to run.
 - Press Space while moving to jump over obstacles.
 - Hold C to crouch.
+- Stand next to a villager and press E, then a number key to choose what to do.
+- What you do changes how each group sees you; press R to see where you stand.
 
 **Point** at the chickee, fire, mortar, canoe or a villager to highlight it
 and see a short description. Outside the flat camp clearing the character
@@ -50,6 +56,56 @@ follows the height of the terrain.
 
 Walk speed, the run multiplier, jump strength and crouch speed are set in
 `src/config.js`. Key bindings are set in `src/input.js`.
+
+## Reputation
+
+Groups in the world remember what you do. Each **faction** has a score from
+-100 to 100 (starting at 0) that maps to a tier:
+
+| Tier       | Score        | Prices | Will talk |
+| ---------- | ------------ | ------ | --------- |
+| Hostile    | -100 to -60  | ×1.5   | No        |
+| Distrusted | -59 to -20   | ×1.2   | Yes       |
+| Neutral    | -19 to 19    | ×1.0   | Yes       |
+| Trusted    | 20 to 59     | ×0.9   | Yes       |
+| Honored    | 60 to 100    | ×0.8   | Yes       |
+
+Walk up to a villager and a hint shows who they are, which faction they
+belong to and how that faction sees you. Press `E` to open a small menu
+(Help, Trade fairly, Steal, Threaten); choose with `1`–`4` or a click, and
+`E` closes it. One action can move several factions at once, in different
+directions. A villager whose faction is Hostile turns away instead. Press `R`
+for a live panel of every faction's score and tier, and how much attention
+the authorities are paying you (0–3). Reputation is saved in the browser's
+`localStorage` and restored when the page is reloaded; to start over, run
+`seminoleReputation.reset()` in the browser console.
+
+Everything is data in `src/data/reputation.json`: the factions, the score
+range, the tiers (with their price multiplier and whether the faction will
+talk), the authority-attention thresholds, every action's per-faction deltas
+and the villager menu. Adding a faction or an action only needs a change to
+that file. Villagers are given a faction in `VILLAGERS` in `src/game.js`.
+
+Other systems can query `src/reputation.js`:
+
+```js
+import {
+  applyAction, getReputation, getTier, onReputationChanged,
+  getPriceMultiplier, willTalk, getAuthorityAttention, isUnlocked,
+} from './reputation.js';
+
+applyAction('resist_authorities');           // families up, authorities down
+getReputation('traders');                     // -> 0
+getTier('traders');                           // -> 'neutral'
+getPriceMultiplier('traders');                // -> 1
+willTalk('traders');                          // -> true
+getAuthorityAttention();                      // -> 0..3
+isUnlocked({ faction: 'farmers', minTier: 'trusted' });
+const stop = onReputationChanged(({ actionId, changes }) => { /* ... */ });
+```
+
+These work on the shared, saved instance; `createReputation({ config, storage })`
+makes an independent one (the tests use this).
 
 ## Look and rendering
 
@@ -84,13 +140,17 @@ See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 ## Project layout
 
 ```
-index.html              Page shell, HUD, hover prompt and the How to Play panel container
+index.html              Page shell, HUD, hover prompt, villager menu and the How to Play / reputation panel containers
 src/main.js             Entry point: checks for WebGL and starts the game
 src/game.js             Renderer, camera, controls, player movement, NPCs, hover highlighting and the main loop
 src/config.js           Movement constants (speeds, jump, crouch)
 src/input.js            Keyboard bindings and held-key tracking
 src/movement.js         Character movement: walking, running, jumping and crouching over the terrain
 src/controls-panel.js   The How to Play panel (built from the key bindings)
+src/reputation.js       Per-faction reputation: scores, tiers, action deltas, effect hooks and saving
+src/data/reputation.json  Factions, tiers, actions and the villager menu (reputation data)
+src/npc-interaction.js  Talking to villagers: the E hint, the action menu and refusals
+src/reputation-panel.js The reputation panel (R)
 src/character.js        Builds characters from parameters; proportions; idle, walk and run animations
 src/character-params.js Seeded character parameters (body, face, skin, hair, clothing) per variant
 src/character-geometry.js  Sculpted head, ears, eyes, hair cards, hands, feet, garments and patchwork
@@ -108,7 +168,7 @@ src/textures.js         Procedural PBR texture sets
 src/geometry.js         Geometry helpers (merging, strips, lumpy blobs)
 src/noise.js            Deterministic noise functions
 src/layout.js           Where things sit in the camp
-src/style.css           Page, HUD, prompt and panel styles
+src/style.css           Page, HUD, prompt, menu and panel styles
 tests/                  Vitest unit tests
 ```
 

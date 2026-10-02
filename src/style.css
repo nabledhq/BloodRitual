@@ -77,7 +77,9 @@ body {
   user-select: none;
 }
 
-#controls-panel[hidden] {
+#controls-panel[hidden],
+#reputation-panel[hidden],
+#npc-menu[hidden] {
   display: none;
 }
 
@@ -125,7 +127,8 @@ body {
   white-space: nowrap;
 }
 
-#controls-panel kbd {
+#controls-panel kbd,
+#npc-menu kbd {
   display: inline-block;
   min-width: 1.4em;
   padding: 1px 6px;
@@ -143,6 +146,184 @@ body {
   padding-left: 18px;
   font-size: 13px;
   opacity: 0.9;
+}
+
+#reputation-panel {
+  position: fixed;
+  top: 96px;
+  left: 20px;
+  width: 270px;
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  padding: 12px 16px;
+  color: #fff8e7;
+  background: rgba(43, 30, 18, 0.82);
+  border: 1px solid rgba(241, 196, 15, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  user-select: none;
+}
+
+.rep-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rep-table th {
+  padding: 4px 0 1px;
+  font-weight: normal;
+  text-align: left;
+}
+
+.rep-table td {
+  padding: 4px 0 1px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rep-score {
+  font-variant-numeric: tabular-nums;
+}
+
+.rep-tier-hostile {
+  color: #ff8a70;
+}
+
+.rep-tier-distrusted {
+  color: #f5b26b;
+}
+
+.rep-tier-trusted,
+.rep-tier-honored {
+  color: #a8e08f;
+}
+
+.rep-table .rep-bar-row td {
+  padding: 0 0 3px;
+}
+
+.rep-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 248, 231, 0.15);
+}
+
+.rep-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 1px;
+  height: 8px;
+  background: rgba(255, 248, 231, 0.5);
+}
+
+.rep-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  transition: left 0.25s ease, width 0.25s ease;
+}
+
+.rep-bar .positive {
+  background: #a8e08f;
+}
+
+.rep-bar .negative {
+  background: #ff8a70;
+}
+
+.rep-attention {
+  margin: 8px 0 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+#npc-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  min-width: 260px;
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  padding: 10px 16px;
+  color: #fff8e7;
+  background: rgba(43, 30, 18, 0.86);
+  border: 1px solid rgba(241, 196, 15, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  user-select: none;
+}
+
+#npc-menu[data-state='hint'] {
+  padding: 6px 14px;
+  background: rgba(30, 24, 16, 0.6);
+  border-color: transparent;
+}
+
+#npc-menu p {
+  margin: 0;
+}
+
+.npc-menu-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.npc-faction {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.npc-hint .npc-faction {
+  margin-left: 6px;
+}
+
+.npc-options {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.npc-options button {
+  display: block;
+  width: 100%;
+  margin: 3px 0;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 248, 231, 0.25);
+  border-radius: 5px;
+  background: rgba(255, 248, 231, 0.06);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.npc-options button:hover {
+  background: rgba(255, 248, 231, 0.18);
+}
+
+.npc-refusal {
+  color: #ff8a70;
+}
+
+#npc-menu .npc-result {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+#npc-menu .npc-footer {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.75;
 }
 
 .error {

@@ -42,6 +42,8 @@ const { LAYOUT } = await import('../src/layout.js');
 const { MOVEMENT } = await import('../src/config.js');
 const { CHARACTER_HEIGHT } = await import('../src/character.js');
 const { terrainHeight } = await import('../src/world.js');
+const { createReputation, REPUTATION_CONFIG } = await import('../src/reputation.js');
+const { ReputationPanel } = await import('../src/reputation-panel.js');
 
 describe('Game', () => {
   let container;
@@ -59,10 +61,11 @@ describe('Game', () => {
     delete globalThis.window;
   });
 
-  /** Dispatches a key event through the listener the game registered on window. */
+  /** Dispatches a key event through every listener the game registered on window. */
   function key(type, code) {
-    const call = window.addEventListener.mock.calls.findLast(([name]) => name === type);
-    call[1]({ code, preventDefault: vi.fn() });
+    for (const [name, listener] of window.addEventListener.mock.calls) {
+      if (name === type) listener({ code, preventDefault: vi.fn() });
+    }
   }
 
   it('puts the character and the world in the scene', () => {
@@ -294,6 +297,101 @@ describe('Game', () => {
     expect(game.controls.target.y).toBeCloseTo(terrainHeight(p.x, p.z) + CHARACTER_HEIGHT * 0.6, 6);
   });
 
+  describe('reputation', () => {
+    function fakeElement() {
+      return { innerHTML: '', hidden: true, dataset: {}, addEventListener: vi.fn(), removeEventListener: vi.fn(), setAttribute: vi.fn() };
+    }
+
+    function memoryStorage() {
+      const data = new Map();
+      return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)) };
+    }
+
+    /** Score shown in the reputation panel for `faction`. */
+    function hudScore(panelElement, faction) {
+      const match = panelElement.innerHTML.match(new RegExp(`data-faction="${faction}">.*?<td class="rep-score">(.*?)</td>`));
+      return Number(match[1]);
+    }
+
+    /** Puts the player right next to `npc`. */
+    function standBy(game, npc) {
+      game.movement.position.set(npc.position.x + 0.8, terrainHeight(npc.position.x + 0.8, npc.position.z), npc.position.z);
+      game.update(1 / 60);
+    }
+
+    it('gives every villager a faction from the reputation data', () => {
+      const game = new Game(container);
+      const factions = new Set(REPUTATION_CONFIG.factions.map((f) => f.id));
+      for (const npc of game.npcs) expect(factions.has(npc.userData.faction), npc.name).toBe(true);
+    });
+
+    it('opens the action menu with E next to a villager, and choosing an action changes the HUD', () => {
+      const reputation = createReputation();
+      const menuElement = fakeElement();
+      const panelElement = fakeElement();
+      const game = new Game(container, { menuElement, reputation });
+      const panel = new ReputationPanel(panelElement, reputation, { target: window });
+      const elder = game.npcs.find((n) => n.name === 'npcElderMan');
+      standBy(game, elder);
+      expect(game.interaction.state).toBe('hint');
+      expect(game.interaction.npc).toBe(elder);
+      key('keydown', 'KeyE');
+      expect(game.interaction.state).toBe('menu');
+      expect(menuElement.hidden).toBe(false);
+      expect(menuElement.innerHTML).toContain('data-option="0"');
+
+      key('keydown', 'KeyR');
+      expect(panel.visible).toBe(true);
+      const before = hudScore(panelElement, 'seminole_families');
+      const help = REPUTATION_CONFIG.npcMenu.findIndex((o) => o.action === 'help_family_food');
+      key('keydown', `Digit${help + 1}`);
+      expect(hudScore(panelElement, 'seminole_families')).toBe(before + REPUTATION_CONFIG.actions.help_family_food.deltas.seminole_families);
+      // The menu stays open next to the villager over the next frames.
+      game.update(1 / 60);
+      expect(game.interaction.state).toBe('menu');
+    });
+
+    it('has hostile-faction villagers refuse to talk', () => {
+      const reputation = createReputation();
+      const menuElement = fakeElement();
+      const game = new Game(container, { menuElement, reputation });
+      const hunter = game.npcs.find((n) => n.name === 'npcHunter');
+      while (reputation.willTalk(hunter.userData.faction)) reputation.applyAction('trade_cheat');
+      standBy(game, hunter);
+      key('keydown', 'KeyE');
+      expect(game.interaction.state).toBe('refused');
+      expect(menuElement.innerHTML).toContain('will not speak with you');
+      expect(menuElement.innerHTML).not.toContain('data-option');
+    });
+
+    it('keeps reputation across a reload', () => {
+      const storage = memoryStorage();
+      const game = new Game(container, { reputation: createReputation({ storage }) });
+      standBy(game, game.npcs.find((n) => n.name === 'npcTeen'));
+      key('keydown', 'KeyE');
+      key('keydown', 'Digit3');
+      const saved = game.reputation.snapshot();
+      expect(saved).not.toEqual(createReputation().snapshot());
+      game.dispose();
+
+      const reloaded = new Game(container, { reputation: createReputation({ storage }) });
+      expect(reloaded.reputation.snapshot()).toEqual(saved);
+    });
+
+    it('still walks normally with the menu open', () => {
+      const game = new Game(container);
+      game.update(1 / 60);
+      // The player starts next to the child.
+      expect(game.interaction.npc?.name).toBe('npcChild');
+      key('keydown', 'KeyE');
+      expect(game.interaction.state).toBe('menu');
+      const start = game.character.position.clone();
+      key('keydown', 'KeyW');
+      for (let i = 0; i < 30; i++) game.update(1 / 60);
+      expect(game.character.position.clone().sub(start).setY(0).length()).toBeCloseTo(MOVEMENT.walkSpeed * 0.5, 1);
+    });
+  });
+
   it('cleans up on dispose', () => {
     const game = new Game(container);
     game.start();
@@ -302,6 +400,7 @@ describe('Game', () => {
     expect(window.removeEventListener).toHaveBeenCalledWith('resize', game.onResize);
     expect(window.removeEventListener).toHaveBeenCalledWith('keydown', game.input.handleKeyDown);
     expect(window.removeEventListener).toHaveBeenCalledWith('keyup', game.input.handleKeyUp);
+    expect(window.removeEventListener).toHaveBeenCalledWith('keydown', game.interaction.onKeyDown);
     expect(game.renderer.dispose).toHaveBeenCalled();
   });
 });

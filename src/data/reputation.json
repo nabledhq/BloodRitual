@@ -1,0 +1,89 @@
+{
+  "range": { "min": -100, "max": 100, "start": 0 },
+  "factions": [
+    { "id": "seminole_families", "label": "Seminole families" },
+    { "id": "traders", "label": "Traders" },
+    { "id": "farmers", "label": "Farmers" },
+    { "id": "authorities", "label": "Authorities" },
+    { "id": "nearby_town", "label": "Nearby town" }
+  ],
+  "tiers": [
+    { "id": "hostile", "label": "Hostile", "min": -100, "priceMultiplier": 1.5, "willTalk": false },
+    { "id": "distrusted", "label": "Distrusted", "min": -59, "priceMultiplier": 1.2, "willTalk": true },
+    { "id": "neutral", "label": "Neutral", "min": -19, "priceMultiplier": 1.0, "willTalk": true },
+    { "id": "trusted", "label": "Trusted", "min": 20, "priceMultiplier": 0.9, "willTalk": true },
+    { "id": "honored", "label": "Honored", "min": 60, "priceMultiplier": 0.8, "willTalk": true }
+  ],
+  "authorityAttention": {
+    "faction": "authorities",
+    "thresholds": [-20, -40, -60]
+  },
+  "actions": {
+    "help_family_food": {
+      "label": "Share food with a family",
+      "deltas": { "seminole_families": 10, "farmers": 3 }
+    },
+    "help_family_protection": {
+      "label": "Protect a family",
+      "deltas": { "seminole_families": 12, "nearby_town": -3, "authorities": -3 }
+    },
+    "keep_promise": {
+      "label": "Keep a promise",
+      "deltas": { "seminole_families": 5, "traders": 5, "farmers": 5, "nearby_town": 3, "authorities": 2 }
+    },
+    "break_promise": {
+      "label": "Break a promise",
+      "deltas": { "seminole_families": -8, "traders": -8, "farmers": -6, "nearby_town": -4, "authorities": -2 }
+    },
+    "trade_fair": {
+      "label": "Trade fairly",
+      "deltas": { "traders": 8, "farmers": 4, "nearby_town": 3, "seminole_families": 2 }
+    },
+    "trade_cheat": {
+      "label": "Cheat in a trade",
+      "deltas": { "traders": -15, "farmers": -6, "nearby_town": -5, "seminole_families": -3 }
+    },
+    "respect_custom": {
+      "label": "Respect a custom",
+      "deltas": { "seminole_families": 8, "nearby_town": 1 }
+    },
+    "cooperate_authorities": {
+      "label": "Cooperate with the authorities",
+      "deltas": { "authorities": 10, "nearby_town": 4, "seminole_families": -8 }
+    },
+    "resist_authorities": {
+      "label": "Resist the authorities",
+      "deltas": { "seminole_families": 8, "authorities": -12, "nearby_town": -3 }
+    },
+    "protect_land": {
+      "label": "Protect the land",
+      "deltas": { "seminole_families": 10, "farmers": -4, "authorities": -5, "nearby_town": -2 }
+    },
+    "steal": {
+      "label": "Steal",
+      "deltas": { "traders": -15, "farmers": -15, "seminole_families": -12, "nearby_town": -8, "authorities": -6 }
+    },
+    "threaten_civilian": {
+      "label": "Threaten someone",
+      "deltas": { "seminole_families": -15, "nearby_town": -15, "farmers": -12, "traders": -10, "authorities": -8 }
+    },
+    "harm_civilian": {
+      "label": "Harm someone",
+      "deltas": { "seminole_families": -25, "nearby_town": -25, "farmers": -20, "traders": -20, "authorities": -20 }
+    },
+    "share_secret_with_outsiders": {
+      "label": "Tell outsiders a community secret",
+      "deltas": { "seminole_families": -20, "authorities": 6, "nearby_town": 3 }
+    },
+    "keep_community_secret": {
+      "label": "Keep a community secret",
+      "deltas": { "seminole_families": 8, "authorities": -2 }
+    }
+  },
+  "npcMenu": [
+    { "label": "Help", "action": "help_family_food" },
+    { "label": "Trade fairly", "action": "trade_fair" },
+    { "label": "Steal", "action": "steal" },
+    { "label": "Threaten", "action": "threaten_civilian" }
+  ]
+}

@@ -13,20 +13,23 @@ import { LAYOUT } from './layout.js';
 import { KeyboardInput } from './input.js';
 import { createMovementState, updateMovement, cameraYaw } from './movement.js';
 import { MOVEMENT } from './config.js';
+import { createReputation } from './reputation.js';
+import { NpcInteraction } from './npc-interaction.js';
 
 /**
  * The people of the camp. Each is generated from a fixed seed, so they look
  * the same on every launch. `at` is where they stand (or null for the man
- * walking the camp loop) and `face` what they turn towards.
+ * walking the camp loop), `face` what they turn towards and `faction` the
+ * reputation faction (from `src/data/reputation.json`) they belong to.
  */
 export const VILLAGERS = Object.freeze([
-  { name: 'npcWoman', seed: 41, variant: 'woman', at: [-3.3, -1.8], face: 'firePit', label: 'Villager', prompt: 'She is tending the cooking fire' },
-  { name: 'npcElderWoman', seed: 7, variant: 'elderWoman', at: [-1.35, -2.0], face: 'firePit', label: 'Elder', prompt: 'She is watching the kettle and telling stories' },
-  { name: 'npcChild', seed: 23, variant: 'child', sex: 'female', at: [-0.75, -1.15], face: [0, 2], label: 'Child', prompt: 'She is curious about you' },
-  { name: 'npcElderMan', seed: 12, variant: 'elderMan', at: [3.6, -1.9], face: [0, 0], label: 'Elder', prompt: 'He is resting in the shade of the chickee' },
-  { name: 'npcTeen', seed: 62, variant: 'teen', sex: 'male', at: [2.95, -0.55], face: 'mortar', label: 'Villager', prompt: 'He is waiting his turn at the corn mortar' },
-  { name: 'npcHunter', seed: 77, variant: 'man', at: [-5.6, -5.0], face: 'canoe', label: 'Villager', prompt: 'He is checking the dugout canoe' },
-  { name: 'npcMan', seed: 3, variant: 'man', at: null, label: 'Villager', prompt: 'He is walking back from the canoe' },
+  { name: 'npcWoman', seed: 41, variant: 'woman', at: [-3.3, -1.8], face: 'firePit', label: 'Villager', prompt: 'She is tending the cooking fire', faction: 'seminole_families' },
+  { name: 'npcElderWoman', seed: 7, variant: 'elderWoman', at: [-1.35, -2.0], face: 'firePit', label: 'Elder', prompt: 'She is watching the kettle and telling stories', faction: 'seminole_families' },
+  { name: 'npcChild', seed: 23, variant: 'child', sex: 'female', at: [-0.75, -1.15], face: [0, 2], label: 'Child', prompt: 'She is curious about you', faction: 'seminole_families' },
+  { name: 'npcElderMan', seed: 12, variant: 'elderMan', at: [3.6, -1.9], face: [0, 0], label: 'Elder', prompt: 'He is resting in the shade of the chickee', faction: 'seminole_families' },
+  { name: 'npcTeen', seed: 62, variant: 'teen', sex: 'male', at: [2.95, -0.55], face: 'mortar', label: 'Villager', prompt: 'He is waiting his turn at the corn mortar', faction: 'farmers' },
+  { name: 'npcHunter', seed: 77, variant: 'man', at: [-5.6, -5.0], face: 'canoe', label: 'Villager', prompt: 'He is checking the dugout canoe', faction: 'traders' },
+  { name: 'npcMan', seed: 3, variant: 'man', at: null, label: 'Villager', prompt: 'He is walking back from the canoe', faction: 'nearby_town' },
 ]);
 
 function facing([x, z], target) {
@@ -40,6 +43,7 @@ export function createNpcs() {
     const npc = createCharacter(generateCharacterParams(v.seed, v.variant, v.sex ? { sex: v.sex } : {}));
     npc.name = v.name;
     npc.userData.interactive = { label: v.label, prompt: v.prompt };
+    npc.userData.faction = v.faction;
     if (v.at) {
       const [x, z] = v.at;
       npc.position.set(x, terrainHeight(x, z), z);
@@ -85,9 +89,10 @@ function updateNpc(npc, elapsed) {
  * call `start()` to begin rendering.
  */
 export class Game {
-  constructor(container, { promptElement = null } = {}) {
+  constructor(container, { promptElement = null, menuElement = null, reputation = createReputation() } = {}) {
     this.container = container;
     this.promptElement = promptElement;
+    this.reputation = reputation;
     this.timer = new THREE.Timer();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -138,6 +143,9 @@ export class Game {
     this.walkedDistance = 0;
     this.input = new KeyboardInput(window);
     this.input.attach();
+
+    // Talking to villagers (E) and the menu of actions that change reputation.
+    this.interaction = new NpcInteraction({ reputation, element: menuElement, target: window });
 
     this.onResize = this.onResize.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
@@ -206,6 +214,7 @@ export class Game {
     const elapsed = this.timer.getElapsed();
     this.updatePlayer(step, elapsed);
     for (const npc of this.npcs) updateNpc(npc, elapsed);
+    this.interaction.update(this.character.position, this.npcs);
     updateWorld(this.world, elapsed);
     this.controls.update();
     this.updateHover();
@@ -267,6 +276,7 @@ export class Game {
     this.renderer.domElement.removeEventListener?.('pointerleave', this.onPointerLeave);
     this.highlighter.dispose();
     this.input.detach();
+    this.interaction.dispose();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
