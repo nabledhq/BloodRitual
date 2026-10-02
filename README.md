@@ -107,6 +107,8 @@ const stop = onReputationChanged(({ actionId, changes }) => { /* ... */ });
 These work on the shared, saved instance; `createReputation({ config, storage })`
 makes an independent one (the tests use this).
 
+![Villager menu and reputation panel](docs/screenshots/reputation-menu.jpg)
+
 ## Look and rendering
 
 The aim is believable, polished realism, not photorealism:
