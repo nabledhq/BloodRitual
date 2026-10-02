@@ -92,7 +92,8 @@ are the CC0 villager models and clips in `public/models/npc/`. See
 ## Project layout
 
 ```
-index.html              Page shell, HUD, hover prompt and the How to Play panel container
+index.html              Page shell, HUD, hover prompt, the How to Play panel and debug overlay containers
+npcs.html               NPC lineup / clip viewer page (dev server only)
 src/main.js             Entry point: checks for WebGL and starts the game
 src/game.js             Renderer, camera, controls, player movement, NPC loading, debug keys, hover highlighting and the main loop
 src/config.js           Movement constants (speeds, jump, crouch)
@@ -201,7 +202,8 @@ reviewed by Seminole cultural advisors.
   to its routine, and `G` toggles an overlay with an FPS counter and the
   selected villager's task, posture, gait, current clip and last crossfade
   duration. The action and the clip it resolved to are also logged to the
-  console.
+  console. Open the game with `?npclog` to log every crossfade, e.g.
+  `npcFarmer: crossfade walk -> carry over 0.30 s`.
 - `npm run dev` and open `/npcs.html` to see every role's look in a row.
   `?action=farm` plays one action on all of them, `?t=0.5` freezes it half
   way, and `M` steps through every action.
@@ -260,13 +262,25 @@ clips are registered and can be played with the debug keys only.
 
 ### Performance
 
-Measured with the overlay's FPS counter and `renderer.info` in headless
-Chromium with software WebGL (SwiftShader, so absolute numbers are low),
-same camera, before (seven procedural villagers) and after (seven premade
-villagers): see the pull request for the numbers. The villagers use fewer
-draw calls than the procedural ones did; all seven NPCs' behaviour and
-animation take about 0.2 ms of CPU per frame. The models and clips are
-6.5 MB and load in the background after the world appears.
+Measured on this branch and on `main` (seven procedural villagers) from
+production builds in headless Chromium with software WebGL (SwiftShader,
+480×270, default camera, 15 s per run), so absolute numbers are very low and
+noisy; what matters is the comparison:
+
+| Build  | FPS (run 1 / run 2) | Draw calls | Triangles | NPC + player update (CPU) |
+| ------ | ------------------- | ---------- | --------- | ------------------------- |
+| `main` | 0.81 / 0.70         | 402        | 917 k     | 0.12 ms per frame         |
+| branch | 0.59 / 0.78         | 245        | 979 k     | 0.38 ms per frame (NPCs 0.2 ms) |
+
+The difference is within run-to-run noise. The premade villagers need fewer
+draw calls than the procedural ones; skinning runs on the GPU. The models
+and clips (6.5 MB) load in the background after the world appears, and
+retargeting the clips onto the three skeletons takes about 0.3 s once.
+Press `G` in the game for the live FPS counter.
+
+![Villagers going about their routines](docs/screenshots/npcs-camp.jpg)
+
+![The NPC looks (npcs.html)](docs/screenshots/npcs-lineup.jpg)
 
 ## Characters
 

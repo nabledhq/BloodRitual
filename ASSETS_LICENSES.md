@@ -57,7 +57,8 @@ project's [MIT licence](LICENSE).
 
 ## Documentation images
 
-`docs/screenshots/` contains before/after screenshots of the game and of the
-characters (`characters-*.jpg`), captured from this repository's own builds
+`docs/screenshots/` contains before/after screenshots of the game, of the
+characters (`characters-*.jpg`) and of the villagers (`npcs-*.jpg`, which
+show the CC0 models above), captured from this repository's own builds
 (MIT). They are documentation only and are
 not loaded by the game.

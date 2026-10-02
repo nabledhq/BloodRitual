@@ -123,10 +123,6 @@ export class AnimationController {
     task?.onDone?.();
   }
 
-  get busy() {
-    return Boolean(this.task || this.transient);
-  }
-
   /** The action name currently shown (for the debug overlay). */
   get currentAction() {
     return this.state?.key ?? null;
@@ -219,7 +215,7 @@ export class AnimationController {
     const entry = { from: previous?.key ?? null, to: next.key, duration, time: this.time };
     this.history.push(entry);
     if (this.history.length > 50) this.history.shift();
-    this.log?.(`crossfade ${entry.from} -> ${entry.to} over ${duration.toFixed(2)} s`);
+    this.log?.(previous ? `crossfade ${entry.from} -> ${entry.to} over ${duration.toFixed(2)} s` : `start ${entry.to}`);
   }
 
   /** Advances timers, picks the state, crossfades if it changed and steps the mixer. */

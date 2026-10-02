@@ -70,7 +70,6 @@ export class Npc {
 
     this.taskIndex = startTask % role.tasks.length;
     this.completedTasks = 0;
-    this.taskLog = [];
     this.chat = null;
     this.chatCooldown = 0;
     this.debugAction = null;
@@ -130,8 +129,6 @@ export class Npc {
   }
 
   finishTask() {
-    this.taskLog.push(this.task.def.do);
-    if (this.taskLog.length > 40) this.taskLog.shift();
     this.completedTasks++;
     this.taskIndex = (this.taskIndex + 1) % this.role.tasks.length;
     this.startTask(this.taskIndex);

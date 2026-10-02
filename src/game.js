@@ -37,11 +37,13 @@ function createSelectionMarker() {
 export class Game {
   /**
    * `npcAssets()` resolves to the loaded NPC models and clips (defaults to
-   * fetching them); `debugElement` shows the debug overlay.
+   * fetching them); `debugElement` shows the debug overlay; `npcLog(message)`
+   * receives every NPC crossfade (e.g. `console.debug`).
    */
-  constructor(container, { promptElement = null, debugElement = null, npcAssets = loadNpcAssets } = {}) {
+  constructor(container, { promptElement = null, debugElement = null, npcAssets = loadNpcAssets, npcLog = null } = {}) {
     this.container = container;
     this.promptElement = promptElement;
+    this.npcLog = npcLog;
     this.timer = new THREE.Timer();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -114,7 +116,7 @@ export class Game {
     try {
       const assets = await npcAssets();
       if (this.disposed) return null;
-      this.population = new NpcPopulation(assets, { groundAt: terrainHeight });
+      this.population = new NpcPopulation(assets, { groundAt: terrainHeight, log: this.npcLog });
       this.npcs = this.population.groups;
       this.scene.add(...this.npcs);
       this.interactive = collectInteractive(this.scene);

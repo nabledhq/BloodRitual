@@ -1,3 +1,4 @@
+import { Sphere, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { AnimationLibrary } from './animation-library.js';
@@ -21,6 +22,14 @@ export const NPC_ASSET_URLS = Object.freeze({
 
 /** Mesh names that are optional per NPC (hair styles and beards). */
 const OPTIONAL_PART = /^(hair_|beard)/;
+
+/**
+ * Bounds used for frustum culling and as the first raycast test of every
+ * NPC part, in model space: big enough for any pose (arms out, sitting,
+ * lying down). three.js would otherwise compute them once from the
+ * skeleton before it is first posed and get a zero-size sphere.
+ */
+const NPC_BOUNDS = new Sphere(new Vector3(0, 0.9, 0), 1.5);
 
 /** Which materials a look's `tint` entries recolour (matched on material name). */
 const TINT_MATERIALS = Object.freeze({
@@ -78,6 +87,7 @@ export function createNpcBody(assets, look, materialCache = new Map()) {
     if (!o.isMesh) return;
     o.castShadow = true;
     o.receiveShadow = true;
+    if (o.isSkinnedMesh) o.boundingSphere = NPC_BOUNDS.clone();
     if (OPTIONAL_PART.test(o.name)) o.visible = show.has(o.name);
     o.material = tintedMaterial(o.material, look.tint, materialCache);
   });

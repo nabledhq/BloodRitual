@@ -106,6 +106,8 @@ describe('NPC models', () => {
     expect(b.getObjectByName('body').material.color.getHexString()).toBe('ffffff');
     expect(findNonPbrObjects(a)).toEqual([]);
     a.traverse((o) => o.isMesh && expect(o.castShadow && o.receiveShadow).toBe(true));
+    // Culling / picking bounds cover the whole body before the skeleton is first posed.
+    a.traverse((o) => o.isSkinnedMesh && expect(o.boundingSphere.radius).toBeGreaterThan(1));
   });
 
   it('stays within the asset size budget', () => {

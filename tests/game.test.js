@@ -183,6 +183,16 @@ describe('Game', () => {
     expect(new Set(looks).size).toBe(population.npcs.length);
   });
 
+  it('can log every NPC crossfade with its duration', async () => {
+    const lines = [];
+    const game = makeGame({ npcLog: (line) => lines.push(line) });
+    await game.npcsReady;
+    for (let i = 0; i < 60; i++) game.update(1 / 30);
+    const fades = lines.filter((l) => /crossfade \S+ -> \S+ over (\d+\.\d+) s/.test(l));
+    expect(fades.length).toBeGreaterThan(0);
+    for (const line of fades) expect(Number(line.match(/over (\d+\.\d+) s/)[1]), line).toBeGreaterThan(0);
+  });
+
   it('steps the selected villager through every action with the debug keys', async () => {
     const game = makeGame();
     const population = await game.npcsReady;

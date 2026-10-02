@@ -206,12 +206,12 @@ async function buildCharacters() {
           if (outName === 'head') cutToHead(doc, prim, jointNames, part.head);
         }
         // Bind the part to the model's skeleton, keeping its own inverse bind matrices.
-        for (const [i, joint] of skin.listJoints().entries()) {
+        // Removing each joint and appending its replacement keeps the joint order (JOINTS_0 indices).
+        for (const joint of skin.listJoints()) {
           const target = bones.get(joint.getName());
           if (!target) throw new Error(`${part.file}: bone ${joint.getName()} missing from ${model.skeleton}`);
           skin.removeJoint(joint);
           skin.addJoint(target);
-          void i;
         }
         skin.setSkeleton(bones.get('root'));
         skin.setName(`${model.name}_${outName}_skin`);
@@ -302,7 +302,6 @@ async function buildAnimations() {
       if (before.has(anim)) continue;
       if (!CLIPS[file].includes(anim.getName())) continue;
       for (const channel of anim.listChannels()) channel.setTargetNode(nodesByName.get(channel.getTargetNode().getName()));
-      anim.setName(anim.getName());
       anim.setExtras({ source: file });
     }
   }

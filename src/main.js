@@ -17,6 +17,8 @@ if (isWebGLAvailable()) {
   const game = new Game(container, {
     promptElement: document.getElementById('prompt'),
     debugElement: document.getElementById('debug-overlay'),
+    // ?npclog logs every NPC animation crossfade (with its duration) to the console.
+    npcLog: new URLSearchParams(window.location.search).has('npclog') ? (message) => console.debug(message) : null,
   });
   game.start();
   // Shown on start so first-time players see the controls; H toggles it.
