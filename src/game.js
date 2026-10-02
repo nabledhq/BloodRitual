@@ -5,9 +5,8 @@ import {
   updateCharacterIdle,
   updateCharacterWalk,
   CHARACTER_HEIGHT,
-  DEFAULT_PALETTE,
-  WOMAN_PALETTE,
 } from './character.js';
+import { generateCharacterParams } from './character-params.js';
 import { createWorld, updateWorld, terrainHeight } from './world.js';
 import { Highlighter, collectInteractive, pickInteractive } from './interaction.js';
 import { LAYOUT } from './layout.js';
@@ -15,36 +14,44 @@ import { KeyboardInput } from './input.js';
 import { createMovementState, updateMovement, cameraYaw } from './movement.js';
 import { MOVEMENT } from './config.js';
 
-/** Palette for the villager who walks around the camp. */
-const VILLAGER_PALETTE = Object.freeze({
-  ...DEFAULT_PALETTE,
-  height: 1.7,
-  skin: 0x7e5236,
-  shirtBands: [0x34445e, 0xbfb08e, 0x7a3b2e, 0xb8a888, 0x4f5f3e, 0xbfb08e],
-  neckerchief: 0x34445e,
-  turban: 0x7a3b2e,
-  turbanBand: 0x34445e,
-});
+/**
+ * The people of the camp. Each is generated from a fixed seed, so they look
+ * the same on every launch. `at` is where they stand (or null for the man
+ * walking the camp loop) and `face` what they turn towards.
+ */
+export const VILLAGERS = Object.freeze([
+  { name: 'npcWoman', seed: 41, variant: 'woman', at: [-3.3, -1.8], face: 'firePit', label: 'Villager', prompt: 'She is tending the cooking fire' },
+  { name: 'npcElderWoman', seed: 7, variant: 'elderWoman', at: [-1.35, -2.0], face: 'firePit', label: 'Elder', prompt: 'She is watching the kettle and telling stories' },
+  { name: 'npcChild', seed: 23, variant: 'child', sex: 'female', at: [-0.75, -1.15], face: [0, 2], label: 'Child', prompt: 'She is curious about you' },
+  { name: 'npcElderMan', seed: 12, variant: 'elderMan', at: [3.6, -1.9], face: [0, 0], label: 'Elder', prompt: 'He is resting in the shade of the chickee' },
+  { name: 'npcTeen', seed: 62, variant: 'teen', sex: 'male', at: [2.95, -0.55], face: 'mortar', label: 'Villager', prompt: 'He is waiting his turn at the corn mortar' },
+  { name: 'npcHunter', seed: 77, variant: 'man', at: [-5.6, -5.0], face: 'canoe', label: 'Villager', prompt: 'He is checking the dugout canoe' },
+  { name: 'npcMan', seed: 3, variant: 'man', at: null, label: 'Villager', prompt: 'He is walking back from the canoe' },
+]);
 
-/** NPCs: a woman tending the fire and a man walking a loop through camp. */
+function facing([x, z], target) {
+  const [tx, tz] = Array.isArray(target) ? target : [LAYOUT[target].x, LAYOUT[target].z];
+  return Math.atan2(tx - x, tz - z);
+}
+
+/** NPCs: six villagers of different ages standing about the camp and a man walking a loop through it. */
 export function createNpcs() {
-  const { firePit, walkPath } = LAYOUT;
-  const woman = createCharacter(WOMAN_PALETTE);
-  woman.name = 'npcWoman';
-  const wx = firePit.x - 1.0;
-  const wz = firePit.z + 1.1;
-  woman.position.set(wx, terrainHeight(wx, wz), wz);
-  woman.rotation.y = Math.atan2(firePit.x - wx, firePit.z - wz);
-  woman.userData.interactive = { label: 'Villager', prompt: 'She is tending the cooking fire' };
-  woman.userData.behaviour = 'idle';
-
-  const man = createCharacter(VILLAGER_PALETTE);
-  man.name = 'npcMan';
-  man.userData.interactive = { label: 'Villager', prompt: 'He is walking back from the canoe' };
-  man.userData.behaviour = 'walk';
-  man.userData.path = walkPath;
-  man.userData.speed = 1.1;
-  return [woman, man];
+  return VILLAGERS.map((v) => {
+    const npc = createCharacter(generateCharacterParams(v.seed, v.variant, v.sex ? { sex: v.sex } : {}));
+    npc.name = v.name;
+    npc.userData.interactive = { label: v.label, prompt: v.prompt };
+    if (v.at) {
+      const [x, z] = v.at;
+      npc.position.set(x, terrainHeight(x, z), z);
+      npc.rotation.y = facing(v.at, v.face);
+      npc.userData.behaviour = 'idle';
+    } else {
+      npc.userData.behaviour = 'walk';
+      npc.userData.path = LAYOUT.walkPath;
+      npc.userData.speed = 1.1;
+    }
+    return npc;
+  });
 }
 
 /** Position on the elliptical walk path after walking `distance` metres. */
@@ -69,7 +76,7 @@ function updateNpc(npc, elapsed) {
     npc.position.set(x, terrainHeight(x, z) + bob, z);
     npc.rotation.y = heading;
   } else {
-    updateCharacterIdle(npc, elapsed + 3.7);
+    updateCharacterIdle(npc, elapsed);
   }
 }
 
@@ -226,7 +233,10 @@ export class Game {
     const stride = Math.hypot(dx, dz);
     if (stride > 0 && this.movement.grounded) {
       this.walkedDistance += stride;
-      updateCharacterWalk(this.character, this.walkedDistance, elapsed);
+      // Blend into the run cycle as the speed rises from walking to sprinting.
+      const speed = delta > 0 ? stride / delta : 0;
+      const run = (speed - MOVEMENT.walkSpeed) / (MOVEMENT.walkSpeed * (MOVEMENT.sprintMultiplier - 1));
+      updateCharacterWalk(this.character, this.walkedDistance, elapsed, { run });
     } else {
       updateCharacterIdle(this.character, elapsed);
     }

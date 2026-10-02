@@ -128,14 +128,18 @@ describe('Game', () => {
     }
   });
 
-  it('adds villagers: one idling by the fire and one walking the camp path', () => {
+  it('adds six idling villagers of every age and one walking the camp path', () => {
     const game = new Game(container);
-    const [woman, man] = game.npcs;
-    expect(game.scene.getObjectByName('npcWoman')).toBe(woman);
-    expect(game.scene.getObjectByName('npcMan')).toBe(man);
+    expect(game.npcs).toHaveLength(7);
+    const idle = game.npcs.filter((npc) => npc.userData.behaviour === 'idle');
+    expect(idle.map((npc) => npc.userData.variant).sort()).toEqual(['child', 'elderMan', 'elderWoman', 'man', 'teen', 'woman']);
+    for (const npc of game.npcs) expect(game.scene.getObjectByName(npc.name)).toBe(npc);
+    const man = game.scene.getObjectByName('npcMan');
+    expect(man.userData.behaviour).toBe('walk');
     game.start();
     game.renderer.loop();
     const p0 = man.position.clone();
+    const poses0 = idle.map((npc) => npc.getObjectByName('head').rotation.y);
     game.timer.update = () => {};
     game.timer.getElapsed = () => 2;
     game.renderer.loop();
@@ -144,6 +148,28 @@ describe('Game', () => {
     const e = Math.hypot((man.position.x - path.x) / path.rx, (man.position.z - path.z) / path.rz);
     expect(e).toBeCloseTo(1, 5);
     expect(Math.abs(man.getObjectByName('leftLeg').rotation.x)).toBeGreaterThan(0);
+    // The idle villagers move too (idle motion), standing on the ground with arms down.
+    idle.forEach((npc, i) => {
+      expect(npc.getObjectByName('head').rotation.y, npc.name).not.toBe(poses0[i]);
+      expect(Math.abs(npc.getObjectByName('leftArm').rotation.z), npc.name).toBeLessThan(0.45);
+      expect(npc.position.y).toBeCloseTo(terrainHeight(npc.position.x, npc.position.z), 6);
+    });
+  });
+
+  it('gives every villager a distinct appearance', () => {
+    const game = new Game(container);
+    const tones = new Set(game.npcs.map((npc) => npc.userData.params.skin.tone));
+    const heights = new Set(game.npcs.map((npc) => npc.userData.params.body.height));
+    expect(tones.size).toBe(game.npcs.length);
+    expect(heights.size).toBe(game.npcs.length);
+  });
+
+  it('runs the player with a run cycle while sprinting', () => {
+    const game = new Game(container);
+    key('keydown', 'KeyW');
+    key('keydown', 'ShiftLeft');
+    for (let i = 0; i < 20; i++) game.update(1 / 60);
+    expect(game.character.getObjectByName('leftElbow').rotation.x).toBeLessThan(-1);
   });
 
   it('walks the path facing the direction of travel', () => {
@@ -157,7 +183,9 @@ describe('Game', () => {
     const promptElement = { textContent: '', classList: { toggle: vi.fn() } };
     const game = new Game(container, { promptElement });
     const targets = collectInteractive(game.scene);
-    expect(targets.map((t) => t.name).sort()).toEqual(['canoe', 'chickee', 'firePit', 'mortar', 'npcMan', 'npcWoman'].sort());
+    expect(targets.map((t) => t.name).sort()).toEqual(
+      ['canoe', 'chickee', 'firePit', 'mortar', 'npcMan', 'npcWoman', 'npcElderWoman', 'npcElderMan', 'npcTeen', 'npcChild', 'npcHunter'].sort(),
+    );
     for (const target of targets) {
       const box = new THREE.Box3().setFromObject(target);
       const centre = box.getCenter(new THREE.Vector3());
