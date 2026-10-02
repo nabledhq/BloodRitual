@@ -4,7 +4,7 @@ import { createRng } from './rng.js';
 /**
  * Seeded, parametric description of a Seminole person of around 1900.
  *
- * `generateCharacterParams(seed, variant)` returns plain data (no three.js
+ * `generateCharacterParams(seed, variant)` returns plain data (no engine
  * objects): body proportions, face shape, skin, hair, eyes and clothing.
  * The same seed and variant always give identical parameters; different
  * seeds give visibly different people. `createCharacter` in character.js

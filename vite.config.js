@@ -5,6 +5,6 @@ export default defineConfig({
   optimizeDeps: { exclude: ['@babylonjs/havok'] },
   build: {
     // Babylon.js is a large engine; one multi-megabyte chunk is expected for this game.
-    chunkSizeWarningLimit: 6000,
+    chunkSizeWarningLimit: 8000,
   },
 });

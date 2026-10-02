@@ -1,6 +1,6 @@
 import { Engine } from '@babylonjs/core';
 import { Scene as AuthoredScene } from '../procedural/index.js';
-import { createWorld } from '../world.js';
+import { createWorld, terrainHeight } from '../world.js';
 import { collectColliders } from '../colliders.js';
 import { SceneManager } from './SceneManager.js';
 import { PhysicsManager } from './PhysicsManager.js';
@@ -73,7 +73,9 @@ export class Game {
     this.player.update(step, this.input.getIntent(), this.cameraController.yaw);
     this.npcs.update(this.elapsed, step);
     this.sceneManager.updateWorld(this.world, this.elapsed);
-    this.cameraController.follow(this.player.position, step);
+    // Follow the ground under the character, not jumps or crouches, so those read clearly.
+    const { x, z } = this.player.position;
+    this.cameraController.follow({ x, y: terrainHeight(x, z), z }, step);
     this.interaction.update(this.input.pointer);
   }
 

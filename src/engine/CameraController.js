@@ -66,7 +66,8 @@ export class CameraController {
     /** The distance the player chose with the wheel (before collision). */
     this.distance = radius;
     this.appliedRadius = radius;
-    this.observer = camera.onAfterCheckInputsObservable.add(() => this.resolveCollision(scene.getEngine().getDeltaTime() / 1000));
+    this.lastDelta = 0;
+    this.observer = camera.onAfterCheckInputsObservable.add(() => this.resolveCollision(this.lastDelta));
   }
 
   get target() {
@@ -79,6 +80,7 @@ export class CameraController {
 
   /** Eases the look-at point towards the character standing at `feet`. */
   follow(feet, delta, { immediate = false } = {}) {
+    this.lastDelta = delta;
     const goal = new Vector3(feet.x, feet.y + this.config.targetHeight, feet.z);
     const k = immediate ? 1 : 1 - Math.exp(-this.config.followRate * Math.max(0, delta));
     // Moving the target in place keeps alpha, beta and radius: the camera follows rigidly.

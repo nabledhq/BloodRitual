@@ -48,7 +48,7 @@ describe('horizontalVelocity', () => {
   });
 
   it('follows the camera when it turns', () => {
-    // A default three.js camera looks down -Z; its right is +X.
+    // A camera at +Z looking back at the origin looks down -Z; its right is +X.
     const yaw = cameraYaw(new Vector3(0, 2, 5), new Vector3(0, 1, 0));
     const fwd = horizontalVelocity({ ...idle, forward: 1 }, yaw);
     expect(fwd.x).toBeCloseTo(0);
