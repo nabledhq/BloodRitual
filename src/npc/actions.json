@@ -27,7 +27,7 @@
     "ride": { "clips": ["Ride_Loop", "Horse_Ride_Loop"], "loop": true, "fallback": "drive" },
     "talk": { "clips": ["Idle_Talking_Loop"], "loop": true },
     "gesture": { "clips": ["Spell_Simple_Shoot"], "loop": false, "fallback": "interact" },
-    "point": { "clips": ["Point", "Idle_Point"], "loop": false, "fallback": "gesture" },
+    "point": { "clips": ["Point", "Idle_Point"], "loop": false, "fallback": "interact" },
     "call_out": { "clips": ["Idle_Rail_Call"], "loop": false, "fallback": "talk" },
     "wave": { "clips": ["Wave", "Idle_Wave"], "loop": false, "fallback": "call_out" },
     "eat": { "clips": ["Eat", "Consume"], "loop": true },
@@ -57,9 +57,9 @@
     "idle_cross_arms": { "clips": ["Idle_FoldArms_Loop"], "loop": true },
     "idle_nod": { "clips": ["Yes"], "loop": true },
     "idle_hold_torch": { "clips": ["Idle_Torch_Loop"], "loop": true },
-    "idle_shift_weight": { "clips": ["Idle_ShiftWeight"], "loop": true, "fallback": "idle_hold_torch" },
+    "idle_shift_weight": { "clips": ["Idle_ShiftWeight"], "loop": true, "fallback": "idle_cross_arms" },
     "idle_scratch_head": { "clips": ["Idle_ScratchHead"], "loop": true, "fallback": "idle_look_around" },
-    "idle_check_equipment": { "clips": ["Idle_CheckEquipment"], "loop": true, "fallback": "pistol_idle" },
+    "idle_check_equipment": { "clips": ["Idle_CheckEquipment"], "loop": true, "fallback": "idle_hold_torch" },
     "idle_wipe_brow": { "clips": ["Idle_WipeBrow"], "loop": true, "fallback": "idle_nod" }
   },
   "required": [

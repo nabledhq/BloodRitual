@@ -35,13 +35,22 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', async () => {
 });
 
 const THREE = await import('three');
-const { Game, walkPathPoint } = await import('../src/game.js');
+const { Game } = await import('../src/game.js');
+const { loadTestNpcAssets } = await import('./helpers/npc-assets.js');
+const { ROLE_NAMES } = await import('../src/npc/roles.js');
+const { DEBUG_KEYS } = await import('../src/input.js');
 const { findNonPbrObjects } = await import('../src/materials.js');
 const { collectInteractive } = await import('../src/interaction.js');
-const { LAYOUT } = await import('../src/layout.js');
 const { MOVEMENT } = await import('../src/config.js');
 const { CHARACTER_HEIGHT } = await import('../src/character.js');
 const { terrainHeight } = await import('../src/world.js');
+
+/** Visible mesh names and colours of a body, to tell villagers apart. */
+function collectLook(body) {
+  const parts = new Set();
+  body.traverse((o) => o.isMesh && o.visible && parts.add(`${o.name}:${[].concat(o.material).map((m) => m.color.getHexString()).join('/')}`));
+  return parts;
+}
 
 describe('Game', () => {
   let container;
@@ -59,21 +68,27 @@ describe('Game', () => {
     delete globalThis.window;
   });
 
-  /** Dispatches a key event through the listener the game registered on window. */
+  /** A game whose NPC models load from disk; await `game.npcsReady` before using them. */
+  function makeGame(options = {}) {
+    return new Game(container, { npcAssets: loadTestNpcAssets, ...options });
+  }
+
+  /** Dispatches a key event through every listener the game registered on window. */
   function key(type, code) {
-    const call = window.addEventListener.mock.calls.findLast(([name]) => name === type);
-    call[1]({ code, preventDefault: vi.fn() });
+    const calls = window.addEventListener.mock.calls.filter(([name]) => name === type);
+    expect(calls.length).toBeGreaterThan(0);
+    for (const [, listener] of calls) listener({ code, preventDefault: vi.fn() });
   }
 
   it('puts the character and the world in the scene', () => {
-    const game = new Game(container);
+    const game = makeGame();
     expect(container.appendChild).toHaveBeenCalledWith(game.renderer.domElement);
     expect(game.scene.getObjectByName('character')).toBe(game.character);
     expect(game.scene.getObjectByName('world')).toBe(game.world);
   });
 
   it('frames the character with the starting camera', () => {
-    const game = new Game(container);
+    const game = makeGame();
     const target = game.controls.target;
     expect(target.y).toBeGreaterThan(0.5);
     // The character stands at the origin; the orbit target should be on its
@@ -84,7 +99,7 @@ describe('Game', () => {
   });
 
   it('renders every frame once started', () => {
-    const game = new Game(container);
+    const game = makeGame();
     game.start();
     expect(game.renderer.setAnimationLoop).toHaveBeenCalled();
     game.renderer.loop();
@@ -94,7 +109,7 @@ describe('Game', () => {
   });
 
   it('updates the camera aspect on resize', () => {
-    const game = new Game(container);
+    const game = makeGame();
     container.clientWidth = 1000;
     container.clientHeight = 500;
     game.onResize();
@@ -103,23 +118,26 @@ describe('Game', () => {
   });
 
   it('configures shadows, tone mapping and sRGB output', () => {
-    const game = new Game(container);
+    const game = makeGame();
     expect(game.renderer.shadowMap.enabled).toBe(true);
     expect(game.renderer.shadowMap.type).toBe(THREE.PCFShadowMap);
     expect(game.renderer.toneMapping).toBe(THREE.ACESFilmicToneMapping);
     expect(game.renderer.outputColorSpace).toBe(THREE.SRGBColorSpace);
   });
 
-  it('uses no unlit or basic materials anywhere in the scene', () => {
-    const game = new Game(container);
+  it('uses no unlit or basic materials anywhere in the scene', async () => {
+    const game = makeGame();
+    await game.npcsReady;
     let meshes = 0;
     game.scene.traverse((o) => o.isMesh && meshes++);
     expect(meshes).toBeGreaterThan(100);
     expect(findNonPbrObjects(game.scene).map((o) => o.name)).toEqual([]);
   });
 
-  it('has characters that cast and receive shadows', () => {
-    const game = new Game(container);
+  it('has characters that cast and receive shadows', async () => {
+    const game = makeGame();
+    await game.npcsReady;
+    expect(game.npcs.length).toBeGreaterThan(0);
     for (const character of [game.character, ...game.npcs]) {
       const meshes = [];
       character.traverse((o) => o.isMesh && meshes.push(o));
@@ -128,66 +146,83 @@ describe('Game', () => {
     }
   });
 
-  it('adds six idling villagers of every age and one walking the camp path', () => {
-    const game = new Game(container);
-    expect(game.npcs).toHaveLength(7);
-    const idle = game.npcs.filter((npc) => npc.userData.behaviour === 'idle');
-    expect(idle.map((npc) => npc.userData.variant).sort()).toEqual(['child', 'elderMan', 'elderWoman', 'man', 'teen', 'woman']);
-    for (const npc of game.npcs) expect(game.scene.getObjectByName(npc.name)).toBe(npc);
-    const man = game.scene.getObjectByName('npcMan');
-    expect(man.userData.behaviour).toBe('walk');
-    game.start();
-    game.renderer.loop();
-    const p0 = man.position.clone();
-    const poses0 = idle.map((npc) => npc.getObjectByName('head').rotation.y);
-    game.timer.update = () => {};
-    game.timer.getElapsed = () => 2;
-    game.renderer.loop();
-    expect(man.position.distanceTo(p0)).toBeGreaterThan(0.5);
-    const path = LAYOUT.walkPath;
-    const e = Math.hypot((man.position.x - path.x) / path.rx, (man.position.z - path.z) / path.rz);
-    expect(e).toBeCloseTo(1, 5);
-    expect(Math.abs(man.getObjectByName('leftLeg').rotation.x)).toBeGreaterThan(0);
-    // The idle villagers move too (idle motion), standing on the ground with arms down.
-    idle.forEach((npc, i) => {
-      expect(npc.getObjectByName('head').rotation.y, npc.name).not.toBe(poses0[i]);
-      expect(Math.abs(npc.getObjectByName('leftArm').rotation.z), npc.name).toBeLessThan(0.45);
+  it('spawns a premade, skinned villager for every role, with no primitive-geometry NPCs left', async () => {
+    const game = makeGame();
+    const population = await game.npcsReady;
+    expect(new Set(population.npcs.map((n) => n.roleName))).toEqual(new Set(ROLE_NAMES));
+    for (const npc of game.npcs) {
+      expect(game.scene.getObjectByName(npc.name)).toBe(npc);
+      const meshes = [];
+      population.npcs.find((n) => n.group === npc).body.traverse((o) => o.isMesh && meshes.push(o));
+      expect(meshes.length, npc.name).toBeGreaterThan(0);
+      // Every part of the body is a skinned glTF mesh driven by the shared skeleton.
+      for (const mesh of meshes) expect(mesh.isSkinnedMesh, `${npc.name}/${mesh.name}`).toBe(true);
+    }
+    const models = new Set(population.npcs.map((n) => n.body.name));
+    expect(models.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('animates the villagers over the terrain as the game runs', async () => {
+    const game = makeGame();
+    const population = await game.npcsReady;
+    const start = population.npcs.map((n) => n.position.clone());
+    const pelvis = population.npcs.map((n) => n.body.getObjectByName('pelvis').quaternion.clone());
+    for (let i = 0; i < 120; i++) game.update(1 / 30);
+    const moved = population.npcs.filter((n, i) => n.position.distanceTo(start[i]) > 0.5);
+    expect(moved.length).toBeGreaterThan(0);
+    population.npcs.forEach((npc, i) => {
+      expect(npc.body.getObjectByName('pelvis').quaternion.angleTo(pelvis[i]), npc.name).toBeGreaterThan(0);
       expect(npc.position.y).toBeCloseTo(terrainHeight(npc.position.x, npc.position.z), 6);
     });
   });
 
-  it('gives every villager a distinct appearance', () => {
-    const game = new Game(container);
-    const tones = new Set(game.npcs.map((npc) => npc.userData.params.skin.tone));
-    const heights = new Set(game.npcs.map((npc) => npc.userData.params.body.height));
-    expect(tones.size).toBe(game.npcs.length);
-    expect(heights.size).toBe(game.npcs.length);
+  it('gives every villager a distinct appearance', async () => {
+    const game = makeGame();
+    const population = await game.npcsReady;
+    const looks = population.npcs.map((n) => n.body.name + JSON.stringify([...collectLook(n.body)].sort()));
+    expect(new Set(looks).size).toBe(population.npcs.length);
+  });
+
+  it('steps the selected villager through every action with the debug keys', async () => {
+    const game = makeGame();
+    const population = await game.npcsReady;
+    key('keydown', DEBUG_KEYS.selectNpc);
+    const npc = population.selected;
+    expect(npc).toBe(population.npcs[0]);
+    const actions = npc.controller.library.actionNames();
+    const clips = [];
+    for (let i = 0; i < actions.length; i++) {
+      key('keydown', DEBUG_KEYS.nextAction);
+      game.update(1 / 30);
+      clips.push(npc.controller.state.layers[0].clipAction.getClip().name);
+      expect(clips[i], actions[i]).toBe(npc.controller.library.resolve(actions[i]).clip);
+    }
+    expect(game.selectionMarker.visible).toBe(true);
+    expect(game.debugOverlay.visible).toBe(true);
+    key('keydown', DEBUG_KEYS.resumeNpc);
+    expect(npc.debugAction).toBeNull();
   });
 
   it('runs the player with a run cycle while sprinting', () => {
-    const game = new Game(container);
+    const game = makeGame();
     key('keydown', 'KeyW');
     key('keydown', 'ShiftLeft');
     for (let i = 0; i < 20; i++) game.update(1 / 60);
     expect(game.character.getObjectByName('leftElbow').rotation.x).toBeLessThan(-1);
   });
 
-  it('walks the path facing the direction of travel', () => {
-    const a = walkPathPoint(LAYOUT.walkPath, 1);
-    const b = walkPathPoint(LAYOUT.walkPath, 1.01);
-    const heading = Math.atan2(b.x - a.x, b.z - a.z);
-    expect(Math.cos(heading - a.heading)).toBeGreaterThan(0.99);
-  });
-
-  it('highlights every interactive object and shows its prompt when targeted', () => {
+  it('highlights every interactive object and shows its prompt when targeted', async () => {
     const promptElement = { textContent: '', classList: { toggle: vi.fn() } };
-    const game = new Game(container, { promptElement });
+    const game = makeGame({ promptElement });
+    const population = await game.npcsReady;
     const targets = collectInteractive(game.scene);
-    expect(targets.map((t) => t.name).sort()).toEqual(
-      ['canoe', 'chickee', 'firePit', 'mortar', 'npcMan', 'npcWoman', 'npcElderWoman', 'npcElderMan', 'npcTeen', 'npcChild', 'npcHunter'].sort(),
-    );
+    expect(targets.map((t) => t.name).sort()).toEqual(['canoe', 'chickee', 'firePit', 'mortar', ...population.npcs.map((n) => n.name)].sort());
+    // Skinned villagers are posed by their skeletons, which the (fake) renderer would update.
+    game.update(1 / 30);
+    game.scene.updateMatrixWorld(true);
+    game.scene.traverse((o) => o.isSkinnedMesh && o.skeleton.update());
     for (const target of targets) {
-      const box = new THREE.Box3().setFromObject(target);
+      const box = new THREE.Box3().setFromObject(target, true);
       const centre = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3()).length();
       game.camera.position.copy(centre).add(new THREE.Vector3(0, 0.4, 1).normalize().multiplyScalar(size + 1.5));
@@ -214,13 +249,13 @@ describe('Game', () => {
   });
 
   it('listens for keyboard input', () => {
-    new Game(container);
+    makeGame();
     const events = window.addEventListener.mock.calls.map(([name]) => name);
     expect(events).toEqual(expect.arrayContaining(['keydown', 'keyup', 'blur']));
   });
 
   it('walks the character away from the camera when W is held', () => {
-    const game = new Game(container);
+    const game = makeGame();
     const start = game.character.position.clone();
     const toCharacter = start.clone().sub(game.camera.position).setY(0).normalize();
     key('keydown', 'KeyW');
@@ -231,7 +266,7 @@ describe('Game', () => {
   });
 
   it('keeps the camera following the character', () => {
-    const game = new Game(container);
+    const game = makeGame();
     const offset = game.camera.position.clone().sub(game.controls.target);
     key('keydown', 'ArrowLeft');
     for (let i = 0; i < 30; i++) game.update(1 / 60);
@@ -241,7 +276,7 @@ describe('Game', () => {
   });
 
   it('stops when the keys are released', () => {
-    const game = new Game(container);
+    const game = makeGame();
     key('keydown', 'KeyD');
     game.update(1 / 60);
     key('keyup', 'KeyD');
@@ -252,7 +287,7 @@ describe('Game', () => {
   });
 
   it('jumps on Space and lowers the character while crouching', () => {
-    const game = new Game(container);
+    const game = makeGame();
     key('keydown', 'Space');
     game.update(1 / 60);
     expect(game.character.position.y).toBeGreaterThan(0);
@@ -269,7 +304,7 @@ describe('Game', () => {
   });
 
   it('keeps the character on the terrain outside the flat camp, with the camera following', () => {
-    const game = new Game(container);
+    const game = makeGame();
     // Start on the hummocks well outside the camp clearing.
     const x = 18;
     const z = 14;
@@ -295,7 +330,7 @@ describe('Game', () => {
   });
 
   it('cleans up on dispose', () => {
-    const game = new Game(container);
+    const game = makeGame();
     game.start();
     game.dispose();
     expect(game.renderer.setAnimationLoop).toHaveBeenLastCalledWith(null);

@@ -1,4 +1,4 @@
-import ACTION_CONFIG from './actions.json';
+import ACTION_CONFIG from './actions.json' with { type: 'json' };
 import { boneSubtree, maskClip } from './retarget.js';
 
 /**

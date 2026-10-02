@@ -104,7 +104,9 @@ export class AnimationController {
     const clip = this.library.clipFor(action);
     const once = !resolved.loop;
     const length = once ? clip.duration : duration;
-    this.task = { action, once, clamp: resolved.clamp, until: length == null ? null : this.time + length, onDone, layer };
+    // One-shots hand over a little before their last frame so the blend overlaps it.
+    const lead = once ? Math.min(this.blendDuration, clip.duration / 2) : 0;
+    this.task = { action, once, clamp: resolved.clamp, until: length == null ? null : this.time + length - lead, onDone, layer };
     this.idleVariant = null;
   }
 
@@ -229,9 +231,9 @@ export class AnimationController {
     // Posture-change clips end shortly before their last frame so the blend overlaps it.
     if (this.transient && this.state?.key === this.transient.action) {
       const clip = this.library.clipFor(this.transient.action);
-      if (this.stateTime >= clip.duration - this.blendDuration) this.transient = null;
+      if (this.stateTime >= clip.duration - Math.min(this.blendDuration, clip.duration / 2)) this.transient = null;
     }
-    if (this.task && this.task.until !== null && !this.task.clamp && this.time >= this.task.until - (this.task.once ? this.blendDuration : 0)) {
+    if (this.task && this.task.until !== null && !this.task.clamp && this.time >= this.task.until) {
       this.stop();
     }
 

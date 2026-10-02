@@ -50,6 +50,7 @@ controls.target.set(0, 0.95, 0);
 controls.update();
 
 const query = new URLSearchParams(window.location.search);
+const freeze = query.has('t') ? Number(query.get('t')) : null;
 const assets = await loadNpcAssets();
 const roles = Object.entries(ROLES);
 const npcs = roles.map(([name, role], i) => {
@@ -66,6 +67,12 @@ function show(action) {
   for (const npc of npcs) {
     npc.controller.stop();
     if (action !== 'idle') npc.controller.play(action, { duration: 1e9 });
+    if (freeze !== null) {
+      // Show the pose itself, without a crossfade from the previous one.
+      npc.controller.mixer.stopAllAction();
+      npc.controller.state = null;
+      npc.controller.update(0);
+    }
   }
   const r = npcs[0].controller.library.resolve(action);
   info.textContent = `${action} -> ${r.clip}${r.fallback ? ` (fallback via ${r.via.join(' > ')})` : ''}`;
@@ -75,13 +82,12 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM') show(actions[(index = (index + 1) % actions.length)]);
 });
 
-const freeze = query.has('t') ? Number(query.get('t')) : null;
 const timer = new THREE.Timer();
 function render() {
   timer.update();
   const dt = timer.getDelta();
   for (const npc of npcs) {
-    npc.controller.update(freeze === null ? dt : 0.5);
+    npc.controller.update(freeze === null ? dt : 0);
     if (freeze !== null) {
       for (const layer of npc.controller.state.layers) {
         layer.clipAction.weight = 1;

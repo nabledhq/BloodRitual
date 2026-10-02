@@ -4,7 +4,8 @@
     "runSpeed": 3.1,
     "acceleration": 3.0,
     "turnSpeed": 6.0,
-    "arriveDistance": 0.08
+    "arriveDistance": 0.08,
+    "seatOffset": 0.31
   },
   "social": {
     "talkRadius": 3.2,
@@ -15,6 +16,7 @@
   "places": {
     "field": [4.6, 3.6],
     "fieldPath": [4.0, 0.9],
+    "garden": [2.9, 4.4],
     "store": [3.75, -0.55],
     "storeFace": [3.0, -1.05],
     "campPath": [0.4, 0.9],
@@ -139,10 +141,12 @@
       "look": { "model": "woman", "hair": "hair_long", "tint": { "cloth": "#9fb2c9", "skin": "#b98a70", "hair": "#16110e" }, "height": 0.96 },
       "idleSet": ["idle_look_around", "idle_cross_arms", "idle_nod", "idle_shift_weight"],
       "walkSpeed": 0.9,
-      "workClip": "talk",
+      "workClip": "water_crops",
       "tasks": [
         { "do": "walk", "to": "stallFront" },
         { "do": "idle", "seconds": 9, "face": "stall" },
+        { "do": "walk", "to": "garden" },
+        { "do": "work", "seconds": 6, "face": "field" },
         { "do": "walk", "to": "fireApproach2", "via": ["campPath"] },
         { "do": "sit", "seat": "fireSeat2", "seconds": 8, "action": "drink" },
         { "do": "walk", "to": "campWest" },
@@ -156,7 +160,7 @@
     { "name": "npcTrader", "role": "trader", "at": [-0.8, 3.3], "seed": 37 },
     { "name": "npcHunter", "role": "hunter", "at": [-6.3, -6.0], "seed": 41 },
     { "name": "npcLaborer", "role": "laborer", "at": [7.0, -0.25], "seed": 53 },
-    { "name": "npcVillager", "role": "civilian", "at": [-4.6, 0.4], "seed": 67, "startTask": 4 },
+    { "name": "npcVillager", "role": "civilian", "at": [-4.6, 0.4], "seed": 67, "startTask": 5 },
     {
       "name": "npcVillager2", "role": "civilian", "at": [0.6, 4.6], "seed": 79, "startTask": 1,
       "look": { "model": "man", "hair": "hair_parted", "tint": { "cloth": "#b8a58a", "skin": "#b07a5e", "hair": "#231a14" }, "height": 1.01 },

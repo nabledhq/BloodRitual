@@ -1,4 +1,4 @@
-import ROLE_CONFIG from './roles.json';
+import ROLE_CONFIG from './roles.json' with { type: 'json' };
 import { LAYOUT } from '../layout.js';
 
 /**

@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCharacter, updateCharacterIdle, PLAYER_PARAMS } from './character.js';
-import { VILLAGERS } from './game.js';
 import { generateCharacterParams } from './character-params.js';
 import { createSkyTexture, SUN_DIRECTION } from './sky.js';
 import { getMaterial } from './materials.js';
 
 /**
  * Development page (characters.html, served by `npm run dev`): the player
- * and every villager standing in a row under the game's lighting, for
+ * and sample procedural characters of every variant standing in a row under the game's lighting, for
  * reviewing the character models. `?seed=N&variant=woman` shows a single
  * generated character instead; drag to orbit.
  */
@@ -42,10 +41,20 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
+/** Sample seeds for the procedural generator, one per variant (the camp's NPCs are premade models; see npcs.html). */
+const SAMPLES = [
+  { seed: 41, variant: 'woman' },
+  { seed: 7, variant: 'elderWoman' },
+  { seed: 23, variant: 'child', sex: 'female' },
+  { seed: 12, variant: 'elderMan' },
+  { seed: 62, variant: 'teen', sex: 'male' },
+  { seed: 77, variant: 'man' },
+];
+
 const query = new URLSearchParams(window.location.search);
 const entries = query.has('seed')
   ? [generateCharacterParams(Number(query.get('seed')), query.get('variant') ?? 'man')]
-  : [PLAYER_PARAMS, ...VILLAGERS.map((v) => generateCharacterParams(v.seed, v.variant, v.sex ? { sex: v.sex } : {}))];
+  : [PLAYER_PARAMS, ...SAMPLES.map((v) => generateCharacterParams(v.seed, v.variant, v.sex ? { sex: v.sex } : {}))];
 const characters = entries.map((params, i) => {
   const character = createCharacter(params);
   character.position.x = (i - (entries.length - 1) / 2) * 0.9;

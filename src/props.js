@@ -244,10 +244,14 @@ export function createProps() {
   baskets.add(b1, b2, b3);
   props.add(baskets);
 
-  // A few spare logs and a stump seat by the fire.
+  // A few spare logs and two stump seats by the fire (the villagers sit on them).
   const stump = mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.42, 12), 'log', 'stumpSeat');
   stump.position.set(firePit.x - 1.6, terrainHeight(firePit.x - 1.6, firePit.z + 0.9) + 0.21, firePit.z + 0.9);
   props.add(stump);
+  const stump2 = mesh(new THREE.CylinderGeometry(0.19, 0.23, 0.42, 12), 'log', 'stumpSeat2');
+  stump2.position.set(firePit.x + 1.55, terrainHeight(firePit.x + 1.55, firePit.z + 1.0) + 0.21, firePit.z + 1.0);
+  stump2.rotation.y = 1.3;
+  props.add(stump2);
 
   return props;
 }

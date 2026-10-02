@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AnimationController } from './animation-controller.js';
 import { NPC_MOVEMENT, ROLE_CONFIG, resolvePlace, resolveSeat } from './roles.js';
+import { createBasket } from '../props.js';
 
 /**
  * One NPC: a premade, rigged body driven by an AnimationController, and the
@@ -10,6 +11,8 @@ import { NPC_MOVEMENT, ROLE_CONFIG, resolvePlace, resolveSeat } from './roles.js
  */
 
 const flat = () => 0;
+const handL = new THREE.Vector3();
+const handR = new THREE.Vector3();
 
 function angleTo(from, to) {
   return Math.atan2(to.x - from.x, to.z - from.z);
@@ -50,6 +53,11 @@ export class Npc {
     this.group.userData.interactive = { label: role.label, prompt: prompt ?? role.prompt };
     this.group.userData.role = roleName;
     this.group.userData.npc = this;
+    // A basket held between the hands while carrying.
+    this.carried = createBasket(0.16, 0.2, 'carriedBasket');
+    this.carried.visible = false;
+    this.group.add(this.carried);
+    this.hands = [body.getObjectByName('hand_l'), body.getObjectByName('hand_r')];
 
     this.position = new THREE.Vector3(at[0], groundAt(at[0], at[1]), at[1]);
     this.heading = 0;
@@ -104,7 +112,10 @@ export class Npc {
         break;
       case 'sit': {
         const seat = resolveSeat(def.seat, this.config);
-        task.path = [seat];
+        // The sitting clip puts the hips behind the feet; stand that far in front of the seat.
+        const toFace = Math.atan2(seat.face.x - seat.x, seat.face.z - seat.z);
+        const offset = this.movement.seatOffset;
+        task.path = [{ x: seat.x + Math.sin(toFace) * offset, z: seat.z + Math.cos(toFace) * offset }];
         task.seat = seat;
         this.faceTarget = seat.face;
         this.controller.setPosture('stand');
@@ -270,6 +281,16 @@ export class Npc {
     this.position.y = this.groundAt(this.position.x, this.position.z);
     this.group.position.copy(this.position);
     this.group.rotation.y = this.heading;
+    const carrying = this.controller.posture === 'carry' && !this.debugAction;
+    this.carried.visible = carrying;
+    if (carrying) {
+      this.group.updateMatrixWorld(true);
+      handL.setFromMatrixPosition(this.hands[0].matrixWorld);
+      handR.setFromMatrixPosition(this.hands[1].matrixWorld);
+      this.carried.position.copy(handL.add(handR).multiplyScalar(0.5));
+      this.group.worldToLocal(this.carried.position);
+      this.carried.position.y -= 0.12;
+    }
   }
 
   dispose() {

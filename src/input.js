@@ -15,6 +15,18 @@ export const KEY_BINDINGS = Object.freeze({
 /** Toggles the How to Play panel. */
 export const HELP_KEY = 'KeyH';
 
+/**
+ * Debug keys for inspecting the NPC animation library: select an NPC, step
+ * it through every registered action, send it back to its schedule, and
+ * show the overlay (FPS counter and the selected NPC's state).
+ */
+export const DEBUG_KEYS = Object.freeze({
+  selectNpc: 'KeyN',
+  nextAction: 'KeyM',
+  resumeNpc: 'KeyB',
+  overlay: 'KeyG',
+});
+
 const ACTION_BY_CODE = new Map(
   Object.entries(KEY_BINDINGS).flatMap(([action, codes]) => codes.map((code) => [code, action])),
 );

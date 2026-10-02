@@ -1,4 +1,4 @@
-import { KEY_BINDINGS, HELP_KEY } from './input.js';
+import { KEY_BINDINGS, HELP_KEY, DEBUG_KEYS } from './input.js';
 
 /** Human-readable names for the key codes used in `KEY_BINDINGS`. */
 const KEY_LABELS = {
@@ -8,6 +8,10 @@ const KEY_LABELS = {
   KeyD: 'D',
   KeyC: 'C',
   KeyH: 'H',
+  KeyN: 'N',
+  KeyM: 'M',
+  KeyB: 'B',
+  KeyG: 'G',
   ArrowUp: '↑',
   ArrowDown: '↓',
   ArrowLeft: '←',
@@ -37,6 +41,10 @@ export const CONTROLS = Object.freeze([
   { action: 'Look around', keys: ['Drag mouse'] },
   { action: 'Zoom', keys: ['Scroll'] },
   { action: 'Show / hide this panel', keys: keyLabels([HELP_KEY]) },
+  { action: 'Select next villager (debug)', keys: keyLabels([DEBUG_KEYS.selectNpc]) },
+  { action: 'Play next animation on villager (debug)', keys: keyLabels([DEBUG_KEYS.nextAction]) },
+  { action: 'Return villager to routine (debug)', keys: keyLabels([DEBUG_KEYS.resumeNpc]) },
+  { action: 'Show / hide FPS and NPC info (debug)', keys: keyLabels([DEBUG_KEYS.overlay]) },
 ]);
 
 /** Short tips for combining keys. */

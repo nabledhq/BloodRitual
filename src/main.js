@@ -14,7 +14,10 @@ function isWebGLAvailable() {
 const container = document.getElementById('game');
 
 if (isWebGLAvailable()) {
-  const game = new Game(container, { promptElement: document.getElementById('prompt') });
+  const game = new Game(container, {
+    promptElement: document.getElementById('prompt'),
+    debugElement: document.getElementById('debug-overlay'),
+  });
   game.start();
   // Shown on start so first-time players see the controls; H toggles it.
   const controlsPanel = new ControlsPanel(document.getElementById('controls-panel'));
