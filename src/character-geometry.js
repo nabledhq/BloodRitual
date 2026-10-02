@@ -64,7 +64,7 @@ export class PartBuilder {
   }
 
   /** Builds the merged meshes into `group`. Returns the created meshes. */
-  build(group, { castShadow = (material) => !['sclera', 'iris', 'cornea', 'beads'].includes(material.userData.kind) } = {}) {
+  build(group, { castShadow = (material) => !['sclera', 'iris', 'cornea', 'beads', 'hair'].includes(material.userData.kind) } = {}) {
     const meshes = [];
     for (const [material, { geometries, labels }] of this.pieces) {
       const geometry = geometries.length === 1 ? geometries[0] : mergeGeometries(geometries, false);
@@ -244,21 +244,21 @@ export function headGeometry(sculptor, face, redness) {
     const ax = Math.abs(p.x);
     const front = smoothstep(0.15, 0.4, p.z);
     const cheek = gauss(ax - 0.2, p.y - (eyeY(s) - 0.15), 0.08, 0.07) * front * redness;
-    const lip = (1 - smoothstep(mouthW * 0.5, mouthW * 1.05, ax)) * gauss(0, p.y - mouthY, 1, 0.028) * front;
+    const lip = (1 - smoothstep(mouthW * 0.5, mouthW * 1.05, ax)) * gauss(0, p.y - mouthY, 1, 0.032) * front;
     const under = gauss(ax - eyeX, p.y - (eyeY(s) - 0.05), 0.06, 0.03) * front;
     const nose = gauss(p.x, p.y - tipY, 0.04, 0.04) * front * redness;
     let r = 1 + 0.07 * cheek + 0.04 * nose;
     let g = 1 - 0.03 * cheek - 0.01 * nose;
     let b = 1 - 0.05 * cheek - 0.02 * nose;
-    r = lerp(r, 0.8, lip * 0.9);
-    g = lerp(g, 0.52, lip * 0.9);
-    b = lerp(b, 0.5, lip * 0.9);
+    r = lerp(r, 0.64, lip);
+    g = lerp(g, 0.4, lip);
+    b = lerp(b, 0.38, lip);
     // Baked occlusion: mouth line, nostrils, eye corners and under the jaw.
     const line = (1 - smoothstep(mouthW * 0.5, mouthW, ax)) * gauss(0, p.y - mouthY, 1, 0.006) * front;
     const nostril = gauss(ax - 0.035, p.y - (tipY + 0.005), 0.015, 0.01) * front;
     const corner = gauss(ax - (eyeX - 0.06), p.y - eyeY(s), 0.02, 0.03) * front;
     const jaw = (1 - smoothstep(0.02, 0.14, p.y)) * (1 - smoothstep(0.25, 0.4, p.z));
-    const shade = (1 - 0.12 * under) * (1 - 0.4 * line) * (1 - 0.35 * nostril) * (1 - 0.2 * corner) * (1 - 0.3 * jaw);
+    const shade = (1 - 0.12 * under) * (1 - 0.6 * line) * (1 - 0.35 * nostril) * (1 - 0.2 * corner) * (1 - 0.3 * jaw);
     return [r * shade, g * shade, b * shade];
   });
   return geometry;
@@ -306,7 +306,7 @@ export function eyeGeometries(r, lidOpen, irisColor) {
   cornea.scale(1, 1, 1.05);
 
   // Eyelids: shells around the eyeball, open by `lidOpen`.
-  const open = lerp(1.12, 1.38, lidOpen);
+  const open = lerp(1.22, 1.45, lidOpen);
   const upper = new THREE.SphereGeometry(r * 1.1, 14, 6, -0.25, Math.PI + 0.5, 0, open);
   const lower = new THREE.SphereGeometry(r * 1.07, 14, 3, -0.2, Math.PI + 0.4, Math.PI - 0.95, 0.95);
   upper.rotateX(0.12);
@@ -457,7 +457,7 @@ export function hairGeometries(headGeom, sculptor, hair, rng) {
     const rootY = hairlineHeight(a, style) + 0.03 + rng() * 0.05;
     const start = new THREE.Vector3(Math.sin(a) * 0.45, (rootY - 0.5) * 2, Math.cos(a) * 0.9).normalize();
     // Hair is pulled back smoothly from the face: no cards across the front.
-    if (style !== 'long' && (start.dot(pole) > 0.7 || Math.abs(a) < 0.9)) continue;
+    if (Math.abs(a) < 0.9 || (style !== 'long' && start.dot(pole) > 0.7)) continue;
     const end = style === 'long' ? new THREE.Vector3(Math.sin(a) * 0.35, -0.6, -0.75).normalize() : pole.clone();
     const steps = 7;
     const points = [];
@@ -626,14 +626,14 @@ export function footGeometry({ length, width, ankleHeight, ankleRadius, moccasin
 }
 
 /** Rounded, tapering limb hanging from y = 0 down to y = -length. */
-export function limbGeometry(rTop, rBottom, length, { bulge = 0.08, segments = 12, depth = 1 } = {}) {
+export function limbGeometry(rTop, rBottom, length, { bulge = 0.08, segments = 12, depth = 1, cap = 1 } = {}) {
   const pts = [new THREE.Vector2(0, -length - rBottom * 0.5), new THREE.Vector2(rBottom * 0.8, -length - rBottom * 0.3)];
   for (let i = 0; i <= 6; i++) {
     const t = i / 6;
     const r = lerp(rBottom, rTop, t) * (1 + bulge * Math.sin(t * Math.PI));
     pts.push(new THREE.Vector2(r, -length + t * length));
   }
-  pts.push(new THREE.Vector2(rTop * 0.8, rTop * 0.45), new THREE.Vector2(0, rTop * 0.65));
+  pts.push(new THREE.Vector2(rTop * 0.8, rTop * 0.45 * cap), new THREE.Vector2(0, rTop * 0.65 * cap));
   const g = new THREE.LatheGeometry(pts, segments, Math.PI);
   g.scale(1, 1, depth);
   g.computeVertexNormals();

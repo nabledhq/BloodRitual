@@ -27,11 +27,16 @@ repository (0 MB added).
 | Water ripples | `src/textures.js` | 256×256 RGBA8, tileable | albedo, normal, roughness |
 | Palm leaflet, sawgrass blade, cypress foliage | `src/textures.js` | 256×256 RGBA8 | albedo, normal, roughness |
 | Stone, basketry, cast iron | `src/textures.js` | 256×256 RGBA8, tileable | albedo, normal, roughness |
+| Character skin (young / adult / elder: pores and age-scaled wrinkles) | `src/character-materials.js` | 256×256 RGBA8, tileable | albedo, normal, roughness |
+| Hair strands (alpha-tested cards and scalp layer) | `src/character-materials.js` | 256×256 RGBA8 with alpha | albedo + alpha, normal, roughness |
+| Garment cotton (weave, folds, seams, stitching), wool, buckskin, glass beads | `src/character-materials.js` | 256×256 RGBA8, tileable | albedo, normal, roughness |
+| Iris | `src/character-materials.js` | 128×128 RGBA8 | albedo, normal, roughness |
 | Sky / environment light | `src/sky.js` | 512×256 RGBA16F equirectangular HDR | radiance |
-| Terrain, chickee, plants, props, characters | `src/terrain.js`, `src/structures.js`, `src/vegetation.js`, `src/props.js`, `src/character.js` | procedural geometry | n/a |
+| Terrain, chickee, plants, props, characters | `src/terrain.js`, `src/structures.js`, `src/vegetation.js`, `src/props.js`, `src/character.js`, `src/character-geometry.js` | procedural geometry | n/a |
 
 ## Documentation images
 
-`docs/screenshots/` contains before/after screenshots of the game, captured
-from this repository's own builds (MIT). They are documentation only and are
+`docs/screenshots/` contains before/after screenshots of the game and of the
+characters (`characters-*.jpg`), captured from this repository's own builds
+(MIT). They are documentation only and are
 not loaded by the game.

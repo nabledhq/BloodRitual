@@ -233,8 +233,8 @@ function buildMaleGarments(params, dims, mats, parts) {
     [0.3 * ts, (waistR + chestR) / 2],
     [0.6 * ts, chestR * 1.03],
     [0.86 * ts, chestR],
-    [1.0 * ts, chestR * 0.97],
-    [1.07 * ts, chestR * 0.72],
+    [1.0 * ts, chestR * 1.0],
+    [1.06 * ts, chestR * 0.8],
     [1.12 * ts, neckR * 1.15],
   ]);
   const surface = garmentSurface(profile, { depth: 0.74, count: 11, folds: (y) => (y < 0 ? 0.045 * Math.min(1, y / hem) : 0.01) });
@@ -353,7 +353,7 @@ function buildFemaleGarments(params, dims, mats, parts) {
 function buildArm(side, params, dims, mats, torso, garmentRadius) {
   const c = params.clothing;
   const female = params.sex === 'female';
-  const arm = group(nameFor(side, 'Arm'), torso, side * dims.shoulderHalf, dims.torso - 0.012 * dims.H, 0);
+  const arm = group(nameFor(side, 'Arm'), torso, side * dims.shoulderHalf, dims.torso - 0.02 * dims.H, 0);
   arm.userData.baseY = arm.position.y;
   const sleeve = female ? c.blouse : c.shirt;
   const cuff = female ? c.capeBand : c.bands[0];
@@ -365,7 +365,7 @@ function buildArm(side, params, dims, mats, torso, garmentRadius) {
   arm.userData.side = side;
 
   const upper = new PartBuilder();
-  upper.add(mats.cotton, limbGeometry(dims.limb(0.027), dims.limb(0.024), dims.upperArm, { bulge: 0.06 }), { color: sleeve, label: 'sleeve' });
+  upper.add(mats.cotton, limbGeometry(dims.limb(0.027), dims.limb(0.024), dims.upperArm, { bulge: 0.06, cap: 0.45 }), { color: sleeve, label: 'sleeve' });
   upper.build(arm);
 
   const elbow = group(nameFor(side, 'Elbow'), arm, 0, -dims.upperArm, 0);
@@ -379,7 +379,7 @@ function buildArm(side, params, dims, mats, torso, garmentRadius) {
   const wrist = limbGeometry(dims.limb(0.016), dims.limb(0.015), 0.04 * dims.H, { segments: 8 });
   wrist.translate(0, -dims.forearm * 0.92, 0);
   fore.add(mats.skin, wrist, { label: 'wrist' });
-  fore.build(elbow);
+  fore.build(elbow, { castShadow: (material) => material.userData.kind !== 'skin' });
 
   const hand = group(nameFor(side, 'Hand'), elbow, 0, -dims.forearm, 0);
   hand.rotation.y = -side * Math.PI * 0.5 * 0.85;

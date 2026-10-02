@@ -228,7 +228,10 @@ describe('face, skin, hair and eyes', () => {
     const hair = characterMaterials(character).hair;
     expect(hair.alphaTest).toBeGreaterThan(0);
     expect(hair.map.image.data.some((_, i, a) => i % 4 === 3 && a[i] < 128)).toBe(true);
-    expect(hair.anisotropy).toBeGreaterThan(0);
+    // Low-gloss shading: rough, weak specular and reflections.
+    expect(hair.roughness).toBeGreaterThan(0.6);
+    expect(hair.specularIntensity).toBeLessThan(0.5);
+    expect(hair.envMapIntensity).toBeLessThan(0.5);
     const mesh = character.getObjectByName('skull-hair');
     // Many separate cards: far more triangles than a cap alone would need.
     expect(mesh.geometry.index.count / 3).toBeGreaterThan(400);

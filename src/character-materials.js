@@ -138,7 +138,7 @@ const RECIPES = {
   'skin-young': [skinRecipe(0.1), 1.6],
   'skin-adult': [skinRecipe(0.4), 1.6],
   'skin-elder': [skinRecipe(0.7), 1.5],
-  hair: [hairRecipe, 1.2],
+  hair: [hairRecipe, 0.4],
   cloth: [clothRecipe, 4],
   wool: [woolRecipe, 2],
   leather: [leatherRecipe, 2],
@@ -217,7 +217,7 @@ function tag(material, kind) {
 /** Nominal roughness / sheen per material kind (also asserted by the tests). */
 export const SURFACE = Object.freeze({
   skin: { roughness: 0.5, sheen: 0.3 },
-  hair: { roughness: 0.66, sheen: 0 },
+  hair: { roughness: 0.72, sheen: 0 },
   sclera: { roughness: 0.12, sheen: 0 },
   iris: { roughness: 0.3, sheen: 0 },
   cornea: { roughness: 0.03, sheen: 0 },
@@ -254,7 +254,7 @@ export function characterSkinMaterial(tone, ageBucket = 'adult', detail = 0.6) {
   });
 }
 
-/** Alpha-tested hair strands with soft anisotropic highlights. */
+/** Alpha-tested hair strands with low-gloss shading (dull highlights, weak reflections). */
 export function hairMaterial(color) {
   return cached(`hair:${color}`, () => {
     const set = getCharacterTextureSet('hair');
@@ -265,10 +265,9 @@ export function hairMaterial(color) {
       roughnessMap: set.roughnessMap,
       roughness: SURFACE.hair.roughness,
       metalness: 0,
-      anisotropy: 0.3,
-      // Highlights stretch across the strands (strands run along v).
-      anisotropyRotation: Math.PI / 2,
+      normalScale: new THREE.Vector2(0.5, 0.5),
       specularIntensity: 0.2,
+      envMapIntensity: 0.35,
       alphaTest: 0.4,
       alphaToCoverage: true,
       side: THREE.DoubleSide,
