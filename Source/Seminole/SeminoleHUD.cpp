@@ -58,7 +58,7 @@ void ASeminoleHUD::DrawHUD()
 			ClockText += TEXT("  ") + FormatSeconds(Clock->GetTimeRemainingInPhase());
 		}
 		const FLinearColor ClockColor = Phase == ESeminoleDayPhase::Night ? NightColor : (Phase == ESeminoleDayPhase::Dusk ? WarningColor : TextColor);
-		DrawLine(ClockText, Y, ClockColor, LargeFont);
+		DrawHUDLine(ClockText, Y, ClockColor, LargeFont);
 
 		// Dusk warning banner across the top centre for the first seconds of Dusk.
 		const float TimeIntoDusk = Clock->GetPhaseDuration(ESeminoleDayPhase::Dusk) - Clock->GetTimeRemainingInPhase();
@@ -81,14 +81,14 @@ void ASeminoleHUD::DrawHUD()
 	{
 		if (const USeminoleInventoryComponent* Inventory = Pawn->FindComponentByClass<USeminoleInventoryComponent>())
 		{
-			DrawLine(TEXT("Carrying: ") + Inventory->GetSupplies().ToString(), Y, TextColor, MediumFont);
+			DrawHUDLine(TEXT("Carrying: ") + Inventory->GetSupplies().ToString(), Y, TextColor, MediumFont);
 		}
 	}
 
 	// Stockpile.
 	if (const ASeminoleGameState* GameState = World->GetGameState<ASeminoleGameState>())
 	{
-		DrawLine(TEXT("Stockpile: ") + GameState->GetStockpile().ToString(), Y, TextColor, MediumFont);
+		DrawHUDLine(TEXT("Stockpile: ") + GameState->GetStockpile().ToString(), Y, TextColor, MediumFont);
 	}
 
 	// Prompt and search progress, bottom centre.
@@ -126,10 +126,10 @@ void ASeminoleHUD::DrawHUD()
 	}
 
 	float HelpY = Canvas->SizeY - Margin - 20.0f;
-	DrawLine(TEXT("WASD move, mouse look, Space jump, E interact"), HelpY, DimColor, MediumFont);
+	DrawHUDLine(TEXT("WASD move, mouse look, Space jump, E interact"), HelpY, DimColor, MediumFont);
 }
 
-void ASeminoleHUD::DrawLine(const FString& Text, float& Y, const FLinearColor& Color, UFont* Font)
+void ASeminoleHUD::DrawHUDLine(const FString& Text, float& Y, const FLinearColor& Color, UFont* Font)
 {
 	float Width = 0.0f;
 	float Height = 0.0f;

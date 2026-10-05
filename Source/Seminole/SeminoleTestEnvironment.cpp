@@ -40,8 +40,9 @@ namespace
 	const FRotator SunRotation(-50.0f, 30.0f, 0.0f);
 	// Gap between neighbouring containers at the scavenging area.
 	const float ContainerSpacing = 300.0f;
-	// The noise listener sits beside the containers, inside the configured search noise radius.
-	const FVector NoiseListenerOffset(400.0f, 400.0f, 0.0f);
+	// The noise listener sits past the row of containers: 400 uu from the middle one, 500 uu
+	// from the outer two, inside the default 800 uu search noise radius of each.
+	const FVector NoiseListenerOffset(400.0f, 0.0f, 0.0f);
 
 	template <typename TActor>
 	bool WorldHasActorOfClass(const UWorld* World)

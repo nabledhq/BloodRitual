@@ -8,12 +8,16 @@ C++ module `Seminole` under `Source/Seminole/`, content under `Content/`). The
 technical foundation is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 and the decisions behind it in [docs/adr/](docs/adr/README.md).
 
-The project is a minimal bootable shell with **no gameplay systems**: it opens
-an empty engine map, `ASeminoleGameMode` spawns a floor, lights and a
-PlayerStart at runtime, and `ASeminolePlaceholderCharacter` (a capsule with a
-cylinder, third-person camera, WASD / mouse look / jump) is the pawn. Nothing
-in it has been compiled, launched or packaged by its author yet; the manual
-checklist in [docs/VALIDATION.md](docs/VALIDATION.md) covers that.
+The project is a bootable shell plus the first part of the playable vertical
+slice: it opens an empty engine map, `ASeminoleGameMode` spawns a floor,
+lights, a PlayerStart, a hub stockpile, three supply containers and a
+placeholder noise listener at runtime, and `ASeminolePlaceholderCharacter` (a
+capsule with a cylinder, third-person camera, WASD / mouse look / jump /
+interact) is the pawn. A day/dusk/night clock runs from the start, the lights
+follow it and a canvas HUD shows the phase, carried supplies and stockpile.
+Every tunable is in Project Settings > Game > Seminole. Nothing in it has
+been compiled, launched or packaged by its author yet; the manual checklist in
+[docs/VALIDATION.md](docs/VALIDATION.md) covers that.
 
 ## Getting Started
 
@@ -69,8 +73,22 @@ the `.uproject` file association. The editor starts on the engine map
 
 Press **Play** (set *Spawn player at* to **Default Player Start** in the Play
 dropdown, see Troubleshooting) or **Play > Standalone Game**. You should see a
-grey 100 m x 100 m floor, a lit grey cylinder and a third-person camera.
-Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps.
+grey 100 m x 100 m floor, a lit grey cylinder and a third-person camera, a
+HUD reading `Day 8:00` in the top-left, a yellow block (the hub stockpile)
+6 m behind you and three brown crates 30 m ahead with a blue sphere beside
+them. Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps,
+**E** interacts.
+
+To try the slice: walk to a crate, press **E** when `[E] Search container`
+appears, wait out the 2 s search (the crate turns dark, the sphere turns red
+because it heard you, and `Carrying:` on the HUD goes up), repeat for the
+other crates, walk back and press **E** at the yellow block to move
+everything into `Stockpile:`. After 8 minutes the HUD turns orange, shows a
+dusk warning and the light dims for 60 s; at `Night` the lights stay dim and
+the clock stops. Durations, amounts, radii and light levels are editable in
+**Edit > Project Settings > Game > Seminole** (`USeminoleSettings`); set Day
+to 20 s there to see dusk quickly. The automation tests are under
+**Tools > Session Frontend > Automation**, filter `Seminole`.
 
 ### 6. Package for Windows
 
@@ -221,15 +239,18 @@ See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 ```
 Seminole.uproject       Unreal Engine 5.8 project (module Seminole; no plugins enabled yet)
 Source/                 UE C++: Seminole.Target.cs, SeminoleEditor.Target.cs and the Seminole module
-  Seminole/             Module (Seminole.Build.cs, Seminole.h/.cpp) and the bootstrap classes:
-                        SeminoleGameMode, SeminolePlaceholderCharacter, SeminoleTestEnvironment;
-                        plus one README-only folder per planned system
+  Seminole/             Module (Seminole.Build.cs, Seminole.h/.cpp), the bootstrap classes
+                        (SeminoleGameMode, SeminoleGameState, SeminoleHUD, SeminoleSettings,
+                        SeminolePlaceholderCharacter, SeminoleTestEnvironment) and one folder per
+                        system: Survival/ (day clock, lighting), World/ (noise), Inventory/
+                        (supplies, containers), Interaction/, Community/ (stockpile), Tests/
+                        (automation tests); the other system folders are README-only
 Content/                UE assets (AI, Characters, Environments, Items, Maps, Missions, Weapons, UI, Audio); empty for now
 Config/                 UE DefaultEngine.ini (maps, game mode), DefaultGame.ini (project, packaging), DefaultInput.ini (legacy mappings)
 scripts/                open-project.bat, run-latest-build.bat, editor/create_test_map.py
 Packaged/               Packaged game output (ignored by Git; created by Platforms > Windows > Package Project)
 docs/ARCHITECTURE.md    Technical foundation of the Unreal project
-docs/VALIDATION.md      Manual build / play / package checklist (not yet executed)
+docs/VALIDATION.md      Manual build / play / package / vertical slice checklist (not yet executed)
 docs/adr/               Architecture decision records
 .gitattributes          Git LFS rules for binary assets; CRLF for .bat files
 

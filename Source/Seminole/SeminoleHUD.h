@@ -23,5 +23,5 @@ public:
 	virtual void DrawHUD() override;
 
 private:
-	void DrawLine(const FString& Text, float& Y, const FLinearColor& Color, UFont* Font);
+	void DrawHUDLine(const FString& Text, float& Y, const FLinearColor& Color, UFont* Font);
 };

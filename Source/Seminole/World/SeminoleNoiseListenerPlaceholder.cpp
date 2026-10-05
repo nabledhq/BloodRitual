@@ -69,5 +69,5 @@ void ASeminoleNoiseListenerPlaceholder::OnNoiseHeard(const FSeminoleNoiseEvent& 
 
 	SeminoleTintPlaceholderMesh(Mesh, FLinearColor(0.8f, 0.05f, 0.05f));
 	UE_LOG(LogSeminole, Log, TEXT("%s heard noise #%d from %s at %s (radius %.0f)."), *GetName(), HeardNoiseCount,
-		Noise.Instigator ? *Noise.Instigator->GetName() : TEXT("(none)"), *Noise.Location.ToString(), Noise.Radius);
+		Noise.Instigator != nullptr ? *Noise.Instigator->GetName() : TEXT("(none)"), *Noise.Location.ToString(), Noise.Radius);
 }

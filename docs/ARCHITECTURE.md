@@ -7,8 +7,10 @@ infected. This document records the technical foundation every later
 community-funded feature builds on. Each major choice has an architecture
 decision record in [`adr/`](adr/README.md).
 
-This document describes intent. Nothing below is implemented yet; the ticket
-that implements a system owns the details and updates this file.
+This document describes intent and records what has landed. The ticket that
+implements a system owns the details and updates this file. Implemented so
+far: the bootable shell (#22) and the vertical slice's non-combat core (#23,
+see [Vertical slice part 1](#vertical-slice-part-1-implemented) below).
 
 ## Engine and programming model
 
@@ -26,8 +28,14 @@ that implements a system owns the details and updates this file.
 * Enhanced Input for all player input; Input Actions and Mapping Contexts are
   data assets under `Content/`. Until the Characters ticket lands, the
   bootstrap `ASeminolePlaceholderCharacter` (module root) uses legacy
-  axis/action mappings from `Config/DefaultInput.ini` so the project boots
-  without any input assets; it is replaced, not extended.
+  axis/action mappings from `Config/DefaultInput.ini` (including the slice's
+  `Interact` action on E) so the project boots without any input assets. The
+  real character replaces it, inheriting its inventory and interaction
+  components rather than the class.
+* Tunables live in `USeminoleSettings` (`UDeveloperSettings`, module root):
+  C++ defaults, overridable in `Config/DefaultGame.ini` or Project Settings >
+  Game > Seminole. Gameplay code never hard-codes a tuning value. See
+  [ADR 0009](adr/0009-vertical-slice-core-systems.md).
 * No Gameplay Ability System by default. Health, stamina, damage and status
   effects are plain components and data assets until a concrete need appears.
   See [ADR 0007](adr/0007-no-gameplay-ability-system-by-default.md).
@@ -75,17 +83,24 @@ movement and animation.
 ## Noise event system
 
 Noise is **one shared gameplay event**, not a per-system mechanic. See
-[ADR 0004](adr/0004-noise-event-system.md).
+[ADR 0004](adr/0004-noise-event-system.md) and
+[ADR 0009](adr/0009-vertical-slice-core-systems.md).
 
-* A world subsystem (`Source/Seminole/World/`) exposes
-  `ReportNoise(Location, Loudness, Instigator, Tag)`.
+* `USeminoleNoiseSubsystem` (`Source/Seminole/World/`) exposes
+  `EmitNoise(Location, Radius, Instigator)`. Implemented in #23.
 * Everything that makes noise calls it: footsteps, gunshots, melee impacts,
-  canoe paddling, doors, dropped items, campfire work.
-* The subsystem forwards each event to AI Perception's hearing sense and
-  broadcasts a delegate so other systems (audio cues, UI, missions) can react
-  to the same event.
-* Loudness is a radius in world units; falloff and material attenuation are
-  tuning details for the implementing ticket.
+  canoe paddling, doors, dropped items, campfire work. Today the only caller
+  is a container search (`ContainerSearchNoiseRadius`); part 2's weapons use
+  `BowNoiseRadius` and `RifleNoiseRadius` from `USeminoleSettings`.
+* Hearers implement `ISeminoleNoiseListener` and register with the
+  subsystem; every registered listener within the radius (3D distance)
+  receives `OnNoiseHeard` with the location, radius and instigator. The
+  subsystem then broadcasts `OnNoiseEmitted` so other systems (audio cues,
+  UI, missions) react to the same event. Part 2 adds forwarding to AI
+  Perception's hearing sense in the same place.
+* Radius is in world units; falloff and material attenuation are tuning
+  details for a later ticket. `ASeminoleNoiseListenerPlaceholder` (a sphere
+  that turns red) stands in for the infected until then.
 
 ## Large-population roadmap
 
@@ -213,6 +228,38 @@ Every component that can make noise reports it through the noise subsystem.
 * Browser-first builds of the Unreal project (Pixel Streaming or otherwise)
   are out of scope.
 
+## Vertical slice part 1 (implemented)
+
+Ticket #23 delivered the non-combat core of the slice as C++ runtime-spawned
+placeholders on top of the #22 test environment. Decisions in
+[ADR 0009](adr/0009-vertical-slice-core-systems.md).
+
+| System | Classes | Extension point |
+| --- | --- | --- |
+| Config | `USeminoleSettings` (module root) | Add a `Config` UPROPERTY; read with `GetDefault<USeminoleSettings>()` |
+| Day clock | `USeminoleDayClockSubsystem` (`Survival/`) | Bind `OnPhaseChanged`; part 3 reacts to `Night` and calls `ResetToDay()` |
+| Lighting | `USeminoleDayLightingComponent` (`Survival/`, on the test environment) | Intensities per phase in settings; swap for a sky-atmosphere setup later |
+| HUD | `ASeminoleHUD` (module root, `AHUD` canvas) | Replace with UMG/CommonUI; reads the same clock, inventory and GameState |
+| Noise | `USeminoleNoiseSubsystem`, `ISeminoleNoiseListener`, `ASeminoleNoiseListenerPlaceholder` (`World/`) | Infected implement the listener; weapons call `EmitNoise` |
+| Interaction | `ISeminoleInteractable`, `USeminoleInteractionComponent` (`Interaction/`) | Canoe implements the interface; prompt text comes from the actor |
+| Inventory | `ESeminoleSupplyType`, `FSeminoleSupplyBundle`, `USeminoleInventoryComponent` (`Inventory/`) | Items/equipment are a later ticket; counts stay for supplies |
+| Containers | `ASeminoleSupplyContainer` (`Inventory/`) | `SetSupplies()`; PCG/loot placement replaces the fixed row |
+| Stockpile | `ASeminoleGameState` (totals, `TrySpend`), `ASeminoleStockpile` (`Community/`) | Part 3 spends through `TrySpend`; replicate `Stockpile` for co-op |
+
+Flow: the clock starts in Day when play begins. The player walks 30 m from
+the PlayerStart to the scavenging area, presses **E** at each crate (a
+2 s search, which also emits a noise the placeholder listener hears), carries
+the supplies back and presses **E** at the hub stockpile to deposit them.
+Dusk shows a HUD warning and the lights dim; at Night the lights hold their
+night values and the clock stops. Nothing else happens yet: canoe, weapons
+and infected are part 2; night defense and the result screen are part 3.
+
+Tests: `Source/Seminole/Tests/SeminoleVerticalSliceTests.cpp`
+(`Seminole.VerticalSlice.*` in the Session Frontend) cover noise filtering,
+clock transitions and the loot/deposit/spend flow in a bare game world. How
+to try it in the editor: [README](../README.md#5-play) and
+[VALIDATION.md](VALIDATION.md#7-vertical-slice-part-1).
+
 ## Vertical slice contents and target loop
 
 Contents:
@@ -244,5 +291,5 @@ Out of scope for this project:
 * Dedicated servers, MMO-style worlds, backend orchestration.
 * Browser-first or mobile builds, console ports.
 * Final art direction or content.
-* Any gameplay system in this ticket: AI, noise, health, inventory, weapons,
-  canoe, persistence, networking are documented here and implemented later.
+* Gameplay systems not yet funded: AI, health, weapons, canoe, persistence,
+  networking are documented here and implemented by their own tickets.
