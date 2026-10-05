@@ -24,7 +24,10 @@ that implements a system owns the details and updates this file.
   classes derive from C++ bases and are not expected to contain system logic.
   See [ADR 0002](adr/0002-cpp-blueprint-hybrid.md).
 * Enhanced Input for all player input; Input Actions and Mapping Contexts are
-  data assets under `Content/`.
+  data assets under `Content/`. Until the Characters ticket lands, the
+  bootstrap `ASeminolePlaceholderCharacter` (module root) uses legacy
+  axis/action mappings from `Config/DefaultInput.ini` so the project boots
+  without any input assets; it is replaced, not extended.
 * No Gameplay Ability System by default. Health, stamina, damage and status
   effects are plain components and data assets until a concrete need appears.
   See [ADR 0007](adr/0007-no-gameplay-ability-system-by-default.md).
@@ -181,14 +184,16 @@ Every component that can make noise reports it through the noise subsystem.
 ## Source control
 
 * **Git with Git LFS**. `.gitattributes` routes `.uasset`, `.umap`, `.fbx`,
-  `.wav`, `.png`, `.tga`, `.psd`, `.blend`, `.spp`, `.sbs` and `.sbsar`
-  through LFS. See [ADR 0008](adr/0008-git-lfs-before-perforce.md).
+  `.png`, `.tga`, `.jpg`, `.exr`, `.psd`, `.wav`, `.mp3`, `.ogg`, `.blend`,
+  `.spp`, `.sbs` and `.sbsar` through LFS. See
+  [ADR 0008](adr/0008-git-lfs-before-perforce.md).
 * Binary assets cannot be merged. Until file locking is needed, coordinate
   through tickets: one open ticket owns a given map or asset at a time. Keep
   maps small and split content with World Partition data layers and One File
   Per Actor to reduce conflicts.
 * `.gitignore` excludes `Binaries/`, `Intermediate/`, `Saved/`,
-  `DerivedDataCache/` and IDE files. `Content/` and `Config/` are tracked.
+  `DerivedDataCache/`, IDE files and the packaged output folder `Packaged/`.
+  `Content/` and `Config/` are tracked.
 * Perforce is a possible later move if LFS becomes a bottleneck; nothing in
   the layout prevents it.
 

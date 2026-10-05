@@ -11,3 +11,10 @@
 *.spp filter=lfs diff=lfs merge=lfs -text
 *.sbs filter=lfs diff=lfs merge=lfs -text
 *.sbsar filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+
+# Windows batch files must keep CRLF line endings to run reliably.
+*.bat text eol=crlf

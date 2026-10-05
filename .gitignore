@@ -22,3 +22,6 @@ Build/Receipts/
 *.xcworkspace
 *.code-workspace
 *.generated.h
+
+# Packaged game output (see README: Platforms > Windows > Development, output to Packaged/)
+Packaged/
