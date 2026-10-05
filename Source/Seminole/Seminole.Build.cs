@@ -13,8 +13,7 @@ public class Seminole : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"InputCore",
-			"EnhancedInput"
+			"InputCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

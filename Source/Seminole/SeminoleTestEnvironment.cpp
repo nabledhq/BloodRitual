@@ -1,0 +1,216 @@
+// Copyright Seminole contributors. MIT licence; see LICENSE.
+
+#include "SeminoleTestEnvironment.h"
+
+#include "Seminole.h"
+#include "CollisionQueryParams.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/SkyLightComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/CollisionProfile.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/SkyLight.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshActor.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/PlayerStart.h"
+#include "UObject/ConstructorHelpers.h"
+
+const FName ASeminoleTestEnvironment::FloorTag(TEXT("SeminoleFloor"));
+
+namespace
+{
+	// /Engine/BasicShapes/Cube is 1 m on each side; this scale gives a 100 m x 100 m x 1 m slab.
+	const FVector FloorScale(100.0f, 100.0f, 1.0f);
+	// Centre of the slab, so its top surface sits at Z = 0.
+	const FVector FloorLocation(0.0f, 0.0f, -50.0f);
+	// Above the floor by more than the default capsule half height (88), so the pawn drops onto it.
+	const FVector PlayerStartLocation(0.0f, 0.0f, 120.0f);
+	// Pitch -50 points the sun down; the yaw just keeps the shadows off-axis.
+	const FRotator SunRotation(-50.0f, 30.0f, 0.0f);
+
+	template <typename TComponent>
+	bool WorldHasComponentOfClass(const UWorld* World)
+	{
+		for (TActorIterator<AActor> It(World); It; ++It)
+		{
+			if (It->FindComponentByClass<TComponent>() != nullptr)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+ASeminoleTestEnvironment::ASeminoleTestEnvironment()
+{
+	PrimaryActorTick.bCanEverTick = false;
+
+	ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	if (CubeFinder.Succeeded())
+	{
+		FloorMesh = CubeFinder.Object;
+	}
+}
+
+void ASeminoleTestEnvironment::EnsureSceneBasics()
+{
+	if (GetWorld() == nullptr)
+	{
+		return;
+	}
+
+	// The floor goes first so the PlayerStart has something beneath it when it initialises.
+	if (!HasFloor())
+	{
+		SpawnFloor();
+	}
+	if (!HasDirectionalLight())
+	{
+		SpawnDirectionalLight();
+	}
+	if (!HasSkyLight())
+	{
+		SpawnSkyLight();
+	}
+	if (!HasPlayerStart())
+	{
+		SpawnPlayerStart();
+	}
+}
+
+bool ASeminoleTestEnvironment::HasFloor() const
+{
+	const UWorld* World = GetWorld();
+
+	// A floor spawned by this class or by create_test_map.py carries FloorTag.
+	for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
+	{
+		if (It->ActorHasTag(FloorTag))
+		{
+			return true;
+		}
+	}
+
+	// Otherwise any static geometry under the origin counts, so hand-made maps keep their own ground.
+	FHitResult Hit;
+	const FCollisionQueryParams Params(TEXT("SeminoleFloorProbe"), /*bInTraceComplex*/ false);
+	const FVector ProbeStart(0.0f, 0.0f, 100000.0f);
+	const FVector ProbeEnd(0.0f, 0.0f, -100000.0f);
+	return World->LineTraceSingleByChannel(Hit, ProbeStart, ProbeEnd, ECC_WorldStatic, Params);
+}
+
+bool ASeminoleTestEnvironment::HasDirectionalLight() const
+{
+	return WorldHasComponentOfClass<UDirectionalLightComponent>(GetWorld());
+}
+
+bool ASeminoleTestEnvironment::HasSkyLight() const
+{
+	return WorldHasComponentOfClass<USkyLightComponent>(GetWorld());
+}
+
+bool ASeminoleTestEnvironment::HasPlayerStart() const
+{
+	TActorIterator<APlayerStart> It(GetWorld());
+	return static_cast<bool>(It);
+}
+
+void ASeminoleTestEnvironment::SpawnFloor()
+{
+	if (FloorMesh == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: /Engine/BasicShapes/Cube not found, no floor spawned."));
+		return;
+	}
+
+	// Deferred spawn: the mesh and collision are set before the component registers, which is
+	// the only point at which the Static-mobility component of an AStaticMeshActor accepts a new mesh.
+	const FTransform FloorTransform(FRotator::ZeroRotator, FloorLocation, FloorScale);
+	AStaticMeshActor* Floor = GetWorld()->SpawnActorDeferred<AStaticMeshActor>(
+		AStaticMeshActor::StaticClass(), FloorTransform, this, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Floor == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the floor."));
+		return;
+	}
+
+	Floor->Tags.Add(FloorTag);
+#if WITH_EDITOR
+	Floor->SetActorLabel(TEXT("SeminoleFloor"));
+#endif
+
+	UStaticMeshComponent* FloorComponent = Floor->GetStaticMeshComponent();
+	FloorComponent->SetStaticMesh(FloorMesh);
+	FloorComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+	FloorComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+	Floor->FinishSpawning(FloorTransform);
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a %.0f m x %.0f m floor."), FloorScale.X, FloorScale.Y);
+}
+
+void ASeminoleTestEnvironment::SpawnDirectionalLight()
+{
+	const FTransform LightTransform(SunRotation, FVector(0.0f, 0.0f, 500.0f));
+	ADirectionalLight* Sun = GetWorld()->SpawnActorDeferred<ADirectionalLight>(
+		ADirectionalLight::StaticClass(), LightTransform, this, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Sun == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the directional light."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Sun->SetActorLabel(TEXT("SeminoleSun"));
+#endif
+	// Runtime-spawned lights cannot have baked lighting, so they must be movable.
+	Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+
+	Sun->FinishSpawning(LightTransform);
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a movable directional light."));
+}
+
+void ASeminoleTestEnvironment::SpawnSkyLight()
+{
+	const FTransform LightTransform(FRotator::ZeroRotator, FVector(0.0f, 0.0f, 500.0f));
+	ASkyLight* Sky = GetWorld()->SpawnActorDeferred<ASkyLight>(
+		ASkyLight::StaticClass(), LightTransform, this, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Sky == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the sky light."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Sky->SetActorLabel(TEXT("SeminoleSkyLight"));
+#endif
+	Sky->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+
+	Sky->FinishSpawning(LightTransform);
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a movable sky light."));
+}
+
+void ASeminoleTestEnvironment::SpawnPlayerStart()
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	APlayerStart* Start = GetWorld()->SpawnActor<APlayerStart>(
+		APlayerStart::StaticClass(), PlayerStartLocation, FRotator::ZeroRotator, SpawnParams);
+	if (Start == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the PlayerStart."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Start->SetActorLabel(TEXT("SeminolePlayerStart"));
+#endif
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a PlayerStart at %s."), *PlayerStartLocation.ToString());
+}
