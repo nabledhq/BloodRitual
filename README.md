@@ -1,6 +1,32 @@
 # seminole
 Seminole is a 3d game where the user is part of a Seminole tribe in the 1900s
 
+## Unreal Engine project
+
+The shipping game is built with **Unreal Engine 5.8** (`Seminole.uproject`,
+C++ module `Seminole` under `Source/`, content under `Content/`). The
+technical foundation is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+and the decisions behind it in [docs/adr/](docs/adr/README.md). The UE project
+is currently a skeleton: no gameplay, maps or plugins yet.
+
+Binary assets go through **Git LFS**. Install it once, *before* cloning or
+pulling, so LFS files are fetched instead of pointer stubs:
+
+```sh
+git lfs install
+git clone https://github.com/nabledhq/seminole.git
+```
+
+If you cloned before installing LFS, run `git lfs install` and then
+`git lfs pull` inside the repository.
+
+To open the project, install Unreal Engine 5.8 with a C++ toolchain,
+right-click `Seminole.uproject` and generate project files, then build the
+`SeminoleEditor` target and open the `.uproject`.
+
+The browser prototype below is a preview and design sandbox and keeps working
+independently of the Unreal project.
+
 ## Playing
 
 The game runs in the browser using [Babylon.js](https://www.babylonjs.com/)
@@ -93,6 +119,16 @@ See [ASSETS_LICENSES.md](ASSETS_LICENSES.md).
 ## Project layout
 
 ```
+Seminole.uproject       Unreal Engine 5.8 project (module Seminole; no plugins enabled yet)
+Source/                 UE C++: Seminole.Target.cs, SeminoleEditor.Target.cs and the Seminole module
+  Seminole/             Module stub plus one README-only folder per planned system
+Content/                UE assets (AI, Characters, Environments, Items, Maps, Missions, Weapons, UI, Audio); empty for now
+Config/                 UE DefaultEngine.ini, DefaultGame.ini, DefaultInput.ini
+Plugins/                Project plugins (none yet)
+docs/ARCHITECTURE.md    Technical foundation of the Unreal project
+docs/adr/               Architecture decision records
+.gitattributes          Git LFS rules for binary assets
+
 index.html              Page shell, HUD, hover prompt and the How to Play panel container
 src/main.js             Entry point: checks for WebGL and starts the game
 src/engine/             Babylon.js runtime
