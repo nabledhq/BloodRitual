@@ -3,6 +3,11 @@
 #include "SeminoleTestEnvironment.h"
 
 #include "Seminole.h"
+#include "SeminoleSettings.h"
+#include "Community/SeminoleStockpile.h"
+#include "Inventory/SeminoleSupplyContainer.h"
+#include "Survival/SeminoleDayLightingComponent.h"
+#include "World/SeminoleNoiseListenerPlaceholder.h"
 #include "CollisionQueryParams.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -18,6 +23,10 @@
 #include "UObject/ConstructorHelpers.h"
 
 const FName ASeminoleTestEnvironment::FloorTag(TEXT("SeminoleFloor"));
+// A few steps behind the PlayerStart (which faces +X); turn around to see it.
+const FVector ASeminoleTestEnvironment::HubLocation(-600.0f, 0.0f, 0.0f);
+// 30 m straight ahead of the PlayerStart: far enough to be a trip, well inside the 100 m floor.
+const FVector ASeminoleTestEnvironment::ScavengingAreaLocation(3000.0f, 0.0f, 0.0f);
 
 namespace
 {
@@ -29,6 +38,17 @@ namespace
 	const FVector PlayerStartLocation(0.0f, 0.0f, 120.0f);
 	// Pitch -50 points the sun down; the yaw just keeps the shadows off-axis.
 	const FRotator SunRotation(-50.0f, 30.0f, 0.0f);
+	// Gap between neighbouring containers at the scavenging area.
+	const float ContainerSpacing = 300.0f;
+	// The noise listener sits beside the containers, inside the configured search noise radius.
+	const FVector NoiseListenerOffset(400.0f, 400.0f, 0.0f);
+
+	template <typename TActor>
+	bool WorldHasActorOfClass(const UWorld* World)
+	{
+		TActorIterator<TActor> It(World);
+		return static_cast<bool>(It);
+	}
 
 	template <typename TComponent>
 	bool WorldHasComponentOfClass(const UWorld* World)
@@ -53,6 +73,8 @@ ASeminoleTestEnvironment::ASeminoleTestEnvironment()
 	{
 		FloorMesh = CubeFinder.Object;
 	}
+
+	DayLighting = CreateDefaultSubobject<USeminoleDayLightingComponent>(TEXT("DayLighting"));
 }
 
 void ASeminoleTestEnvironment::EnsureSceneBasics()
@@ -78,6 +100,28 @@ void ASeminoleTestEnvironment::EnsureSceneBasics()
 	if (!HasPlayerStart())
 	{
 		SpawnPlayerStart();
+	}
+}
+
+void ASeminoleTestEnvironment::EnsureSliceActors()
+{
+	const UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	if (!WorldHasActorOfClass<ASeminoleStockpile>(World))
+	{
+		SpawnStockpile();
+	}
+	if (!WorldHasActorOfClass<ASeminoleSupplyContainer>(World))
+	{
+		SpawnContainers();
+	}
+	if (!WorldHasActorOfClass<ASeminoleNoiseListenerPlaceholder>(World))
+	{
+		SpawnNoiseListener();
 	}
 }
 
@@ -114,8 +158,7 @@ bool ASeminoleTestEnvironment::HasSkyLight() const
 
 bool ASeminoleTestEnvironment::HasPlayerStart() const
 {
-	TActorIterator<APlayerStart> It(GetWorld());
-	return static_cast<bool>(It);
+	return WorldHasActorOfClass<APlayerStart>(GetWorld());
 }
 
 void ASeminoleTestEnvironment::SpawnFloor()
@@ -213,4 +256,81 @@ void ASeminoleTestEnvironment::SpawnPlayerStart()
 	Start->SetActorLabel(TEXT("SeminolePlayerStart"));
 #endif
 	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a PlayerStart at %s."), *PlayerStartLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnStockpile()
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ASeminoleStockpile* Stockpile = GetWorld()->SpawnActor<ASeminoleStockpile>(
+		ASeminoleStockpile::StaticClass(), HubLocation, FRotator::ZeroRotator, SpawnParams);
+	if (Stockpile == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the hub stockpile."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Stockpile->SetActorLabel(TEXT("SeminoleHubStockpile"));
+#endif
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned the hub stockpile at %s."), *HubLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnContainers()
+{
+	const TArray<FSeminoleSupplyBundle>& Bundles = GetDefault<USeminoleSettings>()->ContainerSupplies;
+	if (Bundles.Num() == 0)
+	{
+		UE_LOG(LogSeminole, Warning, TEXT("SeminoleTestEnvironment: USeminoleSettings::ContainerSupplies is empty, no containers spawned."));
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// Centre the row of containers on the scavenging area.
+	const float RowStartY = -0.5f * ContainerSpacing * (Bundles.Num() - 1);
+	int32 Spawned = 0;
+	for (int32 Index = 0; Index < Bundles.Num(); ++Index)
+	{
+		const FVector Location = ScavengingAreaLocation + FVector(0.0f, RowStartY + Index * ContainerSpacing, 0.0f);
+		ASeminoleSupplyContainer* Container = GetWorld()->SpawnActor<ASeminoleSupplyContainer>(
+			ASeminoleSupplyContainer::StaticClass(), Location, FRotator::ZeroRotator, SpawnParams);
+		if (Container == nullptr)
+		{
+			UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn supply container %d."), Index);
+			continue;
+		}
+
+		Container->SetSupplies(Bundles[Index]);
+#if WITH_EDITOR
+		Container->SetActorLabel(FString::Printf(TEXT("SeminoleSupplyContainer%d"), Index + 1));
+#endif
+		++Spawned;
+	}
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned %d supply containers at %s."), Spawned, *ScavengingAreaLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnNoiseListener()
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	const FVector Location = ScavengingAreaLocation + NoiseListenerOffset;
+	ASeminoleNoiseListenerPlaceholder* Listener = GetWorld()->SpawnActor<ASeminoleNoiseListenerPlaceholder>(
+		ASeminoleNoiseListenerPlaceholder::StaticClass(), Location, FRotator::ZeroRotator, SpawnParams);
+	if (Listener == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the placeholder noise listener."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Listener->SetActorLabel(TEXT("SeminoleNoiseListener"));
+#endif
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a placeholder noise listener at %s."), *Location.ToString());
 }

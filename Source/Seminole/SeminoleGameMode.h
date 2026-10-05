@@ -9,10 +9,12 @@
 /**
  * Project default game mode (Config/DefaultEngine.ini, GlobalDefaultGameMode).
  *
- * Spawns ASeminolePlaceholderCharacter for each player and, before any player is spawned,
- * makes sure the current map has a floor, a directional light, a sky light and a PlayerStart
- * (see ASeminoleTestEnvironment). This lets the project boot into the empty engine map
- * /Engine/Maps/Entry without any authored content.
+ * Spawns ASeminolePlaceholderCharacter for each player, uses ASeminoleGameState (hub
+ * stockpile) and ASeminoleHUD (canvas HUD) and, before any player is spawned, makes sure the
+ * current map has a floor, a directional light, a sky light, a PlayerStart and the vertical
+ * slice's hub stockpile, supply containers and noise listener (see ASeminoleTestEnvironment).
+ * This lets the project boot into the empty engine map /Engine/Maps/Entry without any
+ * authored content.
  */
 UCLASS()
 class SEMINOLE_API ASeminoleGameMode : public AGameModeBase
