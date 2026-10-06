@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TimerManager.h"
 #include "World/SeminoleNoiseListener.h"
 #include "SeminoleNoiseListenerPlaceholder.generated.h"
 

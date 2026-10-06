@@ -8,6 +8,7 @@
 #include "Inventory/SeminoleSupplyTypes.h"
 #include "SeminoleSupplyContainer.generated.h"
 
+class ASeminoleSupplyContainer;
 class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FSeminoleContainerSearched, ASeminoleSupplyContainer*, Container, AActor*, Searcher);

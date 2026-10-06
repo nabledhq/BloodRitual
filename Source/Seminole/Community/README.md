@@ -2,5 +2,5 @@
 
 The player camp as a community: villagers, their roles and needs, and camp upgrades between day and night phases.
 
-No code lives here yet; this folder fixes where the system lands when its ticket is funded.
+Implemented (vertical slice part 1): `ASeminoleStockpile`, the hub supply store. `DepositAll` takes a whole inventory, `TrySpend(Type, Amount)` is what camp upgrades and barricades draw from. Villagers and roles are later.
 See [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md).

@@ -8,12 +8,15 @@ C++ module `Seminole` under `Source/Seminole/`, content under `Content/`). The
 technical foundation is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 and the decisions behind it in [docs/adr/](docs/adr/README.md).
 
-The project is a minimal bootable shell with **no gameplay systems**: it opens
-an empty engine map, `ASeminoleGameMode` spawns a floor, lights and a
-PlayerStart at runtime, and `ASeminolePlaceholderCharacter` (a capsule with a
-cylinder, third-person camera, WASD / mouse look / jump) is the pawn. Nothing
-in it has been compiled, launched or packaged by its author yet; the manual
-checklist in [docs/VALIDATION.md](docs/VALIDATION.md) covers that.
+The project is a bootable shell plus **part 1 of the playable vertical slice**:
+it opens an empty engine map, `ASeminoleGameMode` spawns a floor, lights, a
+PlayerStart, a hub stockpile, three scavenging containers and a noise listener
+at runtime, and `ASeminolePlaceholderCharacter` (a capsule with a cylinder,
+third-person camera, WASD / mouse look / jump / interact) is the pawn. A day
+clock runs Day -> Dusk -> Night, dimming the lights, and a Canvas HUD shows the
+phase, your carried supplies and the stockpile. Nothing in it has been
+compiled, launched or packaged by its authors yet; the manual checklist in
+[docs/VALIDATION.md](docs/VALIDATION.md) covers that.
 
 ## Getting Started
 
@@ -70,7 +73,28 @@ the `.uproject` file association. The editor starts on the engine map
 Press **Play** (set *Spawn player at* to **Default Player Start** in the Play
 dropdown, see Troubleshooting) or **Play > Standalone Game**. You should see a
 grey 100 m x 100 m floor, a lit grey cylinder and a third-person camera.
-Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps.
+Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps, **E** interacts.
+
+The vertical slice (part 1) loop:
+
+1. The HUD (top left) shows `Day 8:00` counting down, your carried supplies
+   and the stockpile totals. The green block 4 m ahead is the **stockpile**.
+2. Walk 30 m along the sun's shadow direction (+X) to the **scavenging
+   area**: three brown crates in a row and a red sphere behind them.
+3. Stand next to a crate; the prompt `[E] Search container` appears. Press
+   **E**: a 2 s progress bar runs, the crate turns grey, your carried supplies
+   go up, and the red sphere flashes yellow (it heard the search).
+   A grey crate cannot be searched again.
+4. Walk back to the stockpile and press **E** (`[E] Deposit supplies`): the
+   carried counts go to zero and the stockpile totals rise.
+5. After 8 minutes the HUD turns orange with a centred **DUSK** warning and
+   the light turns amber; one minute later it is **NIGHT** and the scene
+   goes dark. To get there faster, shorten *Day Duration Seconds* in
+   **Edit > Project Settings > Game > Seminole** (all slice tunables live
+   there) and press Play again.
+
+Automation tests for these systems run from **Tools > Session Frontend >
+Automation** (filter `Seminole`); see `Source/Seminole/Tests/README.md`.
 
 ### 6. Package for Windows
 

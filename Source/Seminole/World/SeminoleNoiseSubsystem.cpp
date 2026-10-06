@@ -64,10 +64,10 @@ void USeminoleNoiseSubsystem::RegisterListener(UObject* Listener)
 			Listener != nullptr ? *Listener->GetName() : TEXT("<null>"));
 		return;
 	}
-	Listeners.AddUnique(Listener);
+	Listeners.AddUnique(TWeakObjectPtr<UObject>(Listener));
 }
 
 void USeminoleNoiseSubsystem::UnregisterListener(UObject* Listener)
 {
-	Listeners.Remove(Listener);
+	Listeners.Remove(TWeakObjectPtr<UObject>(Listener));
 }
