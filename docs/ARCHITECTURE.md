@@ -7,8 +7,9 @@ infected. This document records the technical foundation every later
 community-funded feature builds on. Each major choice has an architecture
 decision record in [`adr/`](adr/README.md).
 
-This document describes intent. Nothing below is implemented yet; the ticket
-that implements a system owns the details and updates this file.
+This document describes intent. Most of it is not implemented yet; the ticket
+that implements a system owns the details and updates this file. What exists
+today is listed under [Implemented: vertical slice part 1](#implemented-vertical-slice-part-1).
 
 ## Engine and programming model
 
@@ -27,7 +28,9 @@ that implements a system owns the details and updates this file.
   data assets under `Content/`. Until the Characters ticket lands, the
   bootstrap `ASeminolePlaceholderCharacter` (module root) uses legacy
   axis/action mappings from `Config/DefaultInput.ini` so the project boots
-  without any input assets; it is replaced, not extended.
+  without any input assets (the vertical slice added `Interact` = E the same
+  way). The real character replaces it, keeping its inventory and
+  interaction components and binding `Interact` through Enhanced Input.
 * No Gameplay Ability System by default. Health, stamina, damage and status
   effects are plain components and data assets until a concrete need appears.
   See [ADR 0007](adr/0007-no-gameplay-ability-system-by-default.md).
@@ -78,12 +81,17 @@ Noise is **one shared gameplay event**, not a per-system mechanic. See
 [ADR 0004](adr/0004-noise-event-system.md).
 
 * A world subsystem (`Source/Seminole/World/`) exposes
-  `ReportNoise(Location, Loudness, Instigator, Tag)`.
+  `ReportNoise(Location, Loudness, Instigator, Tag)`. **Implemented** (part 1)
+  as `USeminoleNoiseSubsystem::EmitNoise(Location, Radius, Instigator)`; the
+  tag parameter arrives with the first system that needs it.
 * Everything that makes noise calls it: footsteps, gunshots, melee impacts,
-  canoe paddling, doors, dropped items, campfire work.
+  canoe paddling, doors, dropped items, campfire work. Today: container
+  searches.
 * The subsystem forwards each event to AI Perception's hearing sense and
   broadcasts a delegate so other systems (audio cues, UI, missions) can react
-  to the same event.
+  to the same event. Today it delivers to registered `ISeminoleNoiseListener`
+  objects within the radius (plain 3D distance) and broadcasts
+  `OnNoiseEmitted`; AI Perception forwarding is part 2's job.
 * Loudness is a radius in world units; falloff and material attenuation are
   tuning details for the implementing ticket.
 
@@ -146,12 +154,12 @@ Planned components and their folders:
 | Folder | Components |
 | --- | --- |
 | `Characters/` | Player and villager base characters, Enhanced Input, animation hooks |
-| `Survival/` | Health, stamina, hunger, day/night phase |
+| `Survival/` | Health, stamina, hunger, day/night phase (`USeminoleDayClockComponent` exists) |
 | `Combat/` | Weapons, melee and ranged attacks, damage |
-| `Inventory/` | Items, containers, equipment |
-| `Interaction/` | Interactable actors and the interaction component |
+| `Inventory/` | Items, containers, equipment (`USeminoleInventoryComponent`, `ASeminoleSupplyContainer` exist) |
+| `Interaction/` | Interactable actors and the interaction component (`ISeminoleInteractable`, `USeminoleInteractionComponent` exist) |
 | `Vehicles/` | Canoe: a paddled pawn carrying passengers |
-| `Community/` | Villagers, roles, camp upgrades |
+| `Community/` | Villagers, roles, camp upgrades (`ASeminoleStockpile` exists) |
 
 Every component that can make noise reports it through the noise subsystem.
 
@@ -160,7 +168,9 @@ Every component that can make noise reports it through the noise subsystem.
 * **UMG** widgets built on **CommonUI** for consistent input handling across
   keyboard/mouse and gamepad, and for a single activatable-widget stack.
 * HUD (health, stamina, time of day, noise indicator), inventory, pause and
-  session menus. Widget assets under `Content/UI/`.
+  session menus. Widget assets under `Content/UI/`. Until the UI ticket,
+  `ASeminoleHUD` (`Source/Seminole/UI/`) draws the slice's HUD with the
+  `AHUD` Canvas so no widget assets are needed.
 
 ## Audio
 
@@ -229,6 +239,88 @@ Target loop: wake at camp -> canoe out -> scavenge -> return before dark ->
 prepare -> survive the night -> repeat. Each loop should make the camp a
 little stronger and the night a little harder.
 
+## Implemented: vertical slice part 1
+
+Part 1 of the slice (ticket #23) delivers the non-combat core: tunable
+config, the day clock, the noise subsystem, looting into an inventory and
+depositing into a hub stockpile. Everything is C++ with runtime-spawned
+placeholder primitives; there are no new assets. See
+[ADR 0009](adr/0009-vertical-slice-placeholder-systems.md) for the decisions.
+
+| System | Class | Folder |
+| --- | --- | --- |
+| Config | `USeminoleSettings` (`UDeveloperSettings`, Project Settings > Game > Seminole) | module root |
+| Day clock | `USeminoleDayClockComponent` on `ASeminoleGameState` | `Survival/` |
+| Lighting | `USeminoleDayLightingComponent` on `ASeminoleTestEnvironment` | `World/` |
+| Noise | `USeminoleNoiseSubsystem`, `ISeminoleNoiseListener`, `ASeminoleNoiseListenerPlaceholder` | `World/` |
+| Supplies and inventory | `ESeminoleSupplyType`, `FSeminoleSupplyCounts`, `USeminoleInventoryComponent` | `Inventory/` |
+| Containers | `ASeminoleSupplyContainer` | `Inventory/` |
+| Interaction | `ISeminoleInteractable`, `USeminoleInteractionComponent` | `Interaction/` |
+| Stockpile | `ASeminoleStockpile` | `Community/` |
+| HUD | `ASeminoleHUD` (Canvas, no widgets) | `UI/` |
+| Tests | `IMPLEMENT_SIMPLE_AUTOMATION_TEST` under `Seminole.*` | `Tests/` |
+
+How the pieces connect:
+
+* **Config.** Every tunable (day 480 s, dusk 60 s, bow 500 uu and rifle
+  3000 uu noise radii, 2 s container search, per-container supply amounts,
+  lighting values, interaction range) is a `Config` property of
+  `USeminoleSettings` with its default in C++. Gameplay code reads
+  `GetDefault<USeminoleSettings>()`; nothing hard-codes a value. Edits in
+  Project Settings land in `Config/DefaultGame.ini`.
+* **Clock.** `ASeminoleGameState` owns the clock so the phase is host-owned
+  state ready for replication. The clock starts in Day on `BeginPlay`, runs
+  Day -> Dusk -> Night and stops at Night. `OnPhaseChanged` (dynamic
+  multicast) fires on every transition and on `ResetToDay()`;
+  `GetPhaseTimeRemaining()` and `GetPhaseProgress()` are queryable. All time
+  keeping goes through `Advance(DeltaSeconds)`, which `TickComponent` feeds
+  and tests call directly. **Part 3** binds `OnPhaseChanged` for Night and
+  calls `ResetToDay()` after a survived night.
+* **Lighting.** The lighting component finds the first directional light and
+  sky light in the world and interpolates intensity and sun colour: Day
+  values -> Dusk values across Day, Dusk values -> Night values across Dusk,
+  Night values held at Night.
+* **Noise.** `EmitNoise(Location, Radius, Instigator)` delivers an
+  `FSeminoleNoiseEvent` to every registered `ISeminoleNoiseListener` whose
+  `GetNoiseListenerLocation()` is within `Radius`. The placeholder listener
+  (a red sphere at the scavenging area) flashes yellow and logs when it hears
+  something. **Part 2**'s infected implement the interface and register in
+  `BeginPlay`; weapons read `BowNoiseRadius` / `RifleNoiseRadius` from the
+  settings and call `EmitNoise`.
+* **Supplies.** `ESeminoleSupplyType { Food, Ammo, Materials }` with integer
+  counts in `FSeminoleSupplyCounts` (one field per type so it can be marked
+  `Replicated` later). `USeminoleInventoryComponent` on the player pawn has
+  add, remove (fails without change if insufficient), query and `TakeAll`.
+* **Interaction.** `ISeminoleInteractable` (`CanInteract`, `Interact`,
+  `GetInteractionPrompt`) is implemented by the container and the stockpile.
+  `USeminoleInteractionComponent` on the pawn picks the nearest interactable
+  within `InteractionRange` each tick (the HUD shows its prompt) and the
+  legacy `Interact` action (`E`, `Config/DefaultInput.ini`) uses it. **Part 2**
+  adds the canoe, **part 3** barricades, as further implementers.
+* **Containers.** `ASeminoleSupplyContainer::BeginSearch` starts a timed
+  search (emits noise with `ContainerSearchNoiseRadius`), `AdvanceSearch`
+  moves it forward (fed by `Tick`), completion grants the configured
+  supplies to the searcher's inventory, turns the crate grey and locks it:
+  a second search is refused. `USeminoleSettings::ScavengingContainers`
+  lists one loot table per spawned container.
+* **Stockpile.** `ASeminoleStockpile` holds the camp totals. `DepositAll`
+  moves a whole inventory in, `TrySpend(Type, Amount)` returns `false`
+  without change when short. **Part 3** spends from it.
+* **Placeholders.** `ASeminoleTestEnvironment::EnsureSlicePlaceholders()`
+  (called by the game mode after the scene basics) spawns, when the world
+  has none: the stockpile at the hub (4 m in front of the PlayerStart), the
+  configured containers in a row at the scavenging area 30 m along +X, and
+  the noise listener 6 m beyond them.
+* **HUD.** `ASeminoleHUD::DrawHUD` draws the phase and remaining time, a
+  centred dusk warning (and night notice), carried supplies, stockpile
+  totals, the interaction prompt and a search progress bar.
+
+Solo only: nothing is replicated yet, but the phase lives on the game state
+and the totals on an authority-spawned actor, so adding `Replicated` later
+does not move state. Known simplifications: a search keeps running if the
+player walks away; the interaction scan iterates all actors (fine for a
+handful of placeholders).
+
 ## Deferred / Out of scope
 
 Deferred (possible later, not planned now):
@@ -244,5 +336,6 @@ Out of scope for this project:
 * Dedicated servers, MMO-style worlds, backend orchestration.
 * Browser-first or mobile builds, console ports.
 * Final art direction or content.
-* Any gameplay system in this ticket: AI, noise, health, inventory, weapons,
-  canoe, persistence, networking are documented here and implemented later.
+* Any gameplay system beyond part 1 of the vertical slice: AI, health,
+  weapons, canoe, night defense, persistence and networking are documented
+  here and implemented in later tickets.

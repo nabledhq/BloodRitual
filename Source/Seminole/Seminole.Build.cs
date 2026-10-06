@@ -13,7 +13,9 @@ public class Seminole : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"InputCore"
+			"InputCore",
+			// USeminoleSettings (UDeveloperSettings) lives in this module.
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
