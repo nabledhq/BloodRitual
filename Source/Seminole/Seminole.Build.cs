@@ -8,6 +8,9 @@ public class Seminole : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		// Headers are included by path from the module root (e.g. "Inventory/SeminoleSupplyTypes.h").
+		PublicIncludePaths.Add(ModuleDirectory);
+
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core",

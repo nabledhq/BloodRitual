@@ -16,6 +16,7 @@ decision gets a new record that supersedes the old one.
 | [0007](0007-no-gameplay-ability-system-by-default.md) | No Gameplay Ability System by default |
 | [0008](0008-git-lfs-before-perforce.md) | Git with Git LFS before Perforce |
 | [0009](0009-vertical-slice-placeholder-systems.md) | Vertical slice placeholder systems: one settings class, authoritative state on framework objects, deterministic time, C++ interfaces, runtime-spawned primitives |
+| [0010](0010-retire-browser-prototype.md) | Retire the Babylon.js browser prototype; the Unreal project is the only game (supersedes the prototype note in 0001) |
 
 To add a record, copy the structure of an existing file, use the next number
 and add a row here.
