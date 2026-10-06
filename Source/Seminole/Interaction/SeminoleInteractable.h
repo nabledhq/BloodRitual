@@ -6,6 +6,8 @@
 #include "UObject/Interface.h"
 #include "SeminoleInteractable.generated.h"
 
+class AActor;
+
 UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
 class USeminoleInteractable : public UInterface
 {

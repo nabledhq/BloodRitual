@@ -12,6 +12,15 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 
+namespace
+{
+	/** Component-wise blend using FLinearColor's own operators; FMath::Lerp needs float * color. */
+	FLinearColor BlendColor(const FLinearColor& A, const FLinearColor& B, float Alpha)
+	{
+		return A * (1.0f - Alpha) + B * Alpha;
+	}
+}
+
 USeminoleDayLightingComponent::USeminoleDayLightingComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -55,12 +64,12 @@ void USeminoleDayLightingComponent::ApplyLighting()
 	case ESeminoleDayPhase::Day:
 		SunIntensity = FMath::Lerp(Settings->DaySunIntensity, Settings->DuskSunIntensity, Progress);
 		SkyIntensity = FMath::Lerp(Settings->DaySkyLightIntensity, Settings->DuskSkyLightIntensity, Progress);
-		SunColor = FMath::Lerp(Settings->DaySunColor, Settings->DuskSunColor, Progress);
+		SunColor = BlendColor(Settings->DaySunColor, Settings->DuskSunColor, Progress);
 		break;
 	case ESeminoleDayPhase::Dusk:
 		SunIntensity = FMath::Lerp(Settings->DuskSunIntensity, Settings->NightSunIntensity, Progress);
 		SkyIntensity = FMath::Lerp(Settings->DuskSkyLightIntensity, Settings->NightSkyLightIntensity, Progress);
-		SunColor = FMath::Lerp(Settings->DuskSunColor, Settings->NightSunColor, Progress);
+		SunColor = BlendColor(Settings->DuskSunColor, Settings->NightSunColor, Progress);
 		break;
 	case ESeminoleDayPhase::Night:
 	default:
