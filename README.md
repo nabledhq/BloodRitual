@@ -79,8 +79,9 @@ The vertical slice (part 1) loop:
 
 1. The HUD (top left) shows `Day 8:00` counting down, your carried supplies
    and the stockpile totals. The green block 4 m ahead is the **stockpile**.
-2. Walk 30 m along the sun's shadow direction (+X) to the **scavenging
-   area**: three brown crates in a row and a red sphere behind them.
+2. Walk straight ahead (the direction you face at start, +X), past the
+   stockpile, about 30 m to the **scavenging area**: three brown crates in a
+   row and a red sphere behind them.
 3. Stand next to a crate; the prompt `[E] Search container` appears. Press
    **E**: a 2 s progress bar runs, the crate turns grey, your carried supplies
    go up, and the red sphere flashes yellow (it heard the search).

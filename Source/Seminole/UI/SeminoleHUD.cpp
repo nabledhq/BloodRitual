@@ -100,7 +100,7 @@ void ASeminoleHUD::DrawClock(const USeminoleDayClockComponent* Clock, float& Y)
 	// Dusk warning (and the night notice), centred near the top of the screen.
 	const FString Warning = Phase == ESeminoleDayPhase::Dusk
 		? FString::Printf(TEXT("DUSK - night falls in %s. Return to the hub!"), *FormatSeconds(Clock->GetPhaseTimeRemaining()))
-		: TEXT("NIGHT - the camp is on its own until dawn.");
+		: FString(TEXT("NIGHT - the camp is on its own until dawn."));
 	float TextWidth = 0.0f;
 	float TextHeight = 0.0f;
 	GetTextSize(Warning, TextWidth, TextHeight, LargeFont);

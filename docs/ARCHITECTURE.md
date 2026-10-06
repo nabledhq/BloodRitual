@@ -28,7 +28,9 @@ today is listed under [Implemented: vertical slice part 1](#implemented-vertical
   data assets under `Content/`. Until the Characters ticket lands, the
   bootstrap `ASeminolePlaceholderCharacter` (module root) uses legacy
   axis/action mappings from `Config/DefaultInput.ini` so the project boots
-  without any input assets; it is replaced, not extended.
+  without any input assets (the vertical slice added `Interact` = E the same
+  way). The real character replaces it, keeping its inventory and
+  interaction components and binding `Interact` through Enhanced Input.
 * No Gameplay Ability System by default. Health, stamina, damage and status
   effects are plain components and data assets until a concrete need appears.
   See [ADR 0007](adr/0007-no-gameplay-ability-system-by-default.md).
