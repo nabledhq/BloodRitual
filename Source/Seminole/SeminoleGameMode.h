@@ -13,6 +13,9 @@
  * makes sure the current map has a floor, a directional light, a sky light and a PlayerStart
  * (see ASeminoleTestEnvironment). This lets the project boot into the empty engine map
  * /Engine/Maps/Entry without any authored content.
+ *
+ * Vertical slice part 1: uses ASeminoleGameState (owns the day clock) and ASeminoleHUD, and
+ * asks the test environment for the stockpile, containers and noise listener placeholders.
  */
 UCLASS()
 class SEMINOLE_API ASeminoleGameMode : public AGameModeBase

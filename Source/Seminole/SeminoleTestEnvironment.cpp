@@ -3,6 +3,11 @@
 #include "SeminoleTestEnvironment.h"
 
 #include "Seminole.h"
+#include "SeminoleSettings.h"
+#include "Community/SeminoleStockpile.h"
+#include "Inventory/SeminoleSupplyContainer.h"
+#include "World/SeminoleDayLightingComponent.h"
+#include "World/SeminoleNoiseListenerPlaceholder.h"
 #include "CollisionQueryParams.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -30,6 +35,16 @@ namespace
 	// Pitch -50 points the sun down; the yaw just keeps the shadows off-axis.
 	const FRotator SunRotation(-50.0f, 30.0f, 0.0f);
 
+	// Vertical slice layout. The hub is the PlayerStart; the stockpile stands 4 m in front of it.
+	// The scavenging area is 30 m away along +X, far enough to be a walk and still in view.
+	const FVector HubStockpileLocation(400.0f, 0.0f, 50.0f);
+	const FVector ScavengingAreaLocation(3000.0f, 0.0f, 0.0f);
+	// Containers are 60 cm tall with their origin at the centre, so Z = 30 rests on the floor.
+	const float ContainerSpacing = 250.0f;
+	const float ContainerHalfHeight = 30.0f;
+	// The listener sphere (1 m) sits beyond the containers, inside the search noise radius.
+	const FVector NoiseListenerOffset(600.0f, 0.0f, 50.0f);
+
 	template <typename TComponent>
 	bool WorldHasComponentOfClass(const UWorld* World)
 	{
@@ -53,6 +68,8 @@ ASeminoleTestEnvironment::ASeminoleTestEnvironment()
 	{
 		FloorMesh = CubeFinder.Object;
 	}
+
+	DayLighting = CreateDefaultSubobject<USeminoleDayLightingComponent>(TEXT("DayLighting"));
 }
 
 void ASeminoleTestEnvironment::EnsureSceneBasics()
@@ -79,6 +96,41 @@ void ASeminoleTestEnvironment::EnsureSceneBasics()
 	{
 		SpawnPlayerStart();
 	}
+}
+
+void ASeminoleTestEnvironment::EnsureSlicePlaceholders()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	TActorIterator<ASeminoleStockpile> StockpileIt(World);
+	if (!StockpileIt)
+	{
+		SpawnStockpile();
+	}
+	TActorIterator<ASeminoleSupplyContainer> ContainerIt(World);
+	if (!ContainerIt)
+	{
+		SpawnScavengingContainers();
+	}
+	TActorIterator<ASeminoleNoiseListenerPlaceholder> ListenerIt(World);
+	if (!ListenerIt)
+	{
+		SpawnNoiseListener();
+	}
+}
+
+FVector ASeminoleTestEnvironment::GetScavengingAreaLocation()
+{
+	return ScavengingAreaLocation;
+}
+
+FVector ASeminoleTestEnvironment::GetHubStockpileLocation()
+{
+	return HubStockpileLocation;
 }
 
 bool ASeminoleTestEnvironment::HasFloor() const
@@ -213,4 +265,82 @@ void ASeminoleTestEnvironment::SpawnPlayerStart()
 	Start->SetActorLabel(TEXT("SeminolePlayerStart"));
 #endif
 	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a PlayerStart at %s."), *PlayerStartLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnStockpile()
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ASeminoleStockpile* Stockpile = GetWorld()->SpawnActor<ASeminoleStockpile>(
+		ASeminoleStockpile::StaticClass(), HubStockpileLocation, FRotator::ZeroRotator, SpawnParams);
+	if (Stockpile == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the stockpile."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Stockpile->SetActorLabel(TEXT("SeminoleStockpile"));
+#endif
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned the hub stockpile at %s."), *HubStockpileLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnScavengingContainers()
+{
+	const TArray<FSeminoleContainerLoot>& Loot = GetDefault<USeminoleSettings>()->ScavengingContainers;
+	if (Loot.Num() == 0)
+	{
+		UE_LOG(LogSeminole, Warning, TEXT("SeminoleTestEnvironment: USeminoleSettings::ScavengingContainers is empty, no containers spawned."));
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// A row across the scavenging area (along Y), centred on it.
+	const float RowStart = -0.5f * ContainerSpacing * (Loot.Num() - 1);
+	int32 Spawned = 0;
+	for (int32 Index = 0; Index < Loot.Num(); ++Index)
+	{
+		const FVector Location = ScavengingAreaLocation + FVector(0.0f, RowStart + ContainerSpacing * Index, ContainerHalfHeight);
+		ASeminoleSupplyContainer* Container = GetWorld()->SpawnActor<ASeminoleSupplyContainer>(
+			ASeminoleSupplyContainer::StaticClass(), Location, FRotator::ZeroRotator, SpawnParams);
+		if (Container == nullptr)
+		{
+			UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn container %d."), Index);
+			continue;
+		}
+
+		Container->SetSupplies(Loot[Index].Supplies);
+#if WITH_EDITOR
+		Container->SetActorLabel(FString::Printf(TEXT("SeminoleContainer%d"), Index + 1));
+#endif
+		++Spawned;
+	}
+
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned %d scavenging containers around %s."), Spawned, *ScavengingAreaLocation.ToString());
+}
+
+void ASeminoleTestEnvironment::SpawnNoiseListener()
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	const FVector Location = ScavengingAreaLocation + NoiseListenerOffset;
+	ASeminoleNoiseListenerPlaceholder* Listener = GetWorld()->SpawnActor<ASeminoleNoiseListenerPlaceholder>(
+		ASeminoleNoiseListenerPlaceholder::StaticClass(), Location, FRotator::ZeroRotator, SpawnParams);
+	if (Listener == nullptr)
+	{
+		UE_LOG(LogSeminole, Error, TEXT("SeminoleTestEnvironment: failed to spawn the noise listener."));
+		return;
+	}
+
+#if WITH_EDITOR
+	Listener->SetActorLabel(TEXT("SeminoleNoiseListener"));
+#endif
+	UE_LOG(LogSeminole, Log, TEXT("SeminoleTestEnvironment: spawned a placeholder noise listener at %s."), *Location.ToString());
 }

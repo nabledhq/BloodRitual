@@ -2,6 +2,8 @@
 
 #include "SeminolePlaceholderCharacter.h"
 
+#include "Interaction/SeminoleInteractionComponent.h"
+#include "Inventory/SeminoleInventoryComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -54,6 +56,9 @@ ASeminolePlaceholderCharacter::ASeminolePlaceholderCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+
+	Inventory = CreateDefaultSubobject<USeminoleInventoryComponent>(TEXT("Inventory"));
+	Interaction = CreateDefaultSubobject<USeminoleInteractionComponent>(TEXT("Interaction"));
 }
 
 void ASeminolePlaceholderCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -69,6 +74,7 @@ void ASeminolePlaceholderCharacter::SetupPlayerInputComponent(UInputComponent* P
 
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Released, this, &ACharacter::StopJumping);
+	PlayerInputComponent->BindAction(TEXT("Interact"), IE_Pressed, this, &ASeminolePlaceholderCharacter::Interact);
 }
 
 void ASeminolePlaceholderCharacter::MoveForward(float Value)
@@ -90,4 +96,9 @@ void ASeminolePlaceholderCharacter::MoveRight(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		AddMovementInput(Direction, Value);
 	}
+}
+
+void ASeminolePlaceholderCharacter::Interact()
+{
+	Interaction->TryInteract();
 }

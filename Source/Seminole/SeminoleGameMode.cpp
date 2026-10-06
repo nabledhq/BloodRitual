@@ -3,14 +3,18 @@
 #include "SeminoleGameMode.h"
 
 #include "Seminole.h"
+#include "SeminoleGameState.h"
 #include "SeminolePlaceholderCharacter.h"
 #include "SeminoleTestEnvironment.h"
+#include "UI/SeminoleHUD.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
 ASeminoleGameMode::ASeminoleGameMode()
 {
 	DefaultPawnClass = ASeminolePlaceholderCharacter::StaticClass();
+	GameStateClass = ASeminoleGameState::StaticClass();
+	HUDClass = ASeminoleHUD::StaticClass();
 }
 
 void ASeminoleGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -46,4 +50,5 @@ void ASeminoleGameMode::InitGame(const FString& MapName, const FString& Options,
 	}
 
 	TestEnvironment->EnsureSceneBasics();
+	TestEnvironment->EnsureSlicePlaceholders();
 }
