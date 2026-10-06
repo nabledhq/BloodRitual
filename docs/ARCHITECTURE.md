@@ -209,17 +209,11 @@ Every component that can make noise reports it through the noise subsystem.
 
 ## Browser strategy
 
-* The repository also contains a **Babylon.js browser prototype** (`src/`,
-  `index.html`, `package.json`, deployed to GitHub Pages by
-  `.github/workflows/nabled-play.yml`). It exists so backers can try builds
-  in a browser and it predates this document.
-* The shipping game is the Unreal Engine 5.8 project. The browser prototype
-  is a preview and design sandbox, not a second target: gameplay systems
-  are built once, in Unreal.
-* The prototype stays in the repository and keeps working; it is not deleted
-  by the UE scaffold, and the two trees do not share code. Its future
-  (keep as showcase, or retire once the UE build has playable releases) is
-  a later decision.
+* The Unreal Engine 5.8 project is the only game in the repository.
+* The earlier Babylon.js browser prototype (`src/`, `index.html`,
+  `package.json` and its GitHub Pages workflow) has been removed; see
+  [ADR 0010](adr/0010-retire-browser-prototype.md). It remains in Git
+  history.
 * Browser-first builds of the Unreal project (Pixel Streaming or otherwise)
   are out of scope.
 
@@ -329,7 +323,6 @@ Deferred (possible later, not planned now):
 * Gameplay Ability System.
 * Perforce.
 * Linux and macOS builds; gamepad polish beyond CommonUI defaults.
-* Retiring or re-scoping the browser prototype.
 
 Out of scope for this project:
 

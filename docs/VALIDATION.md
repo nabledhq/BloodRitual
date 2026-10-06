@@ -7,6 +7,21 @@ person with Unreal Engine 5.8 on Windows should walk through this list and recor
 (and any fixes) on the pull request or in a follow-up ticket. Section 7 covers the vertical
 slice part 1 (#23).
 
+**First run, 2026-10-06** (Unreal Engine 5.8.3, Visual Studio 2022 / MSVC 14.44, Windows 10):
+
+* The editor target did not compile at first: headers are included by path from the module root
+  (`"Inventory/SeminoleSupplyTypes.h"`), which was not an include path. Fixed by
+  `PublicIncludePaths.Add(ModuleDirectory)` in `Seminole.Build.cs`; the build then succeeded with
+  no errors or warnings (built with `Engine\Build\BatchFiles\Build.bat SeminoleEditor Win64
+  Development`, not through a generated `.sln`).
+* The game ran standalone (`UnrealEditor.exe Seminole.uproject -game`) with no errors in the log.
+  `LogSeminole` showed the floor, both lights, stockpile, 3 containers and noise listener being
+  spawned and `Day begins (480 s)`. No "spawned a PlayerStart" line appeared. Searching two
+  crates logged the search start, the noise heard by the listener (distances 600 and 650 within
+  radius 800) and the completed search (`Ammo 10`, then `Food 3`).
+* Not yet checked: project-file generation, PIE, the visual items, the HUD, the stockpile
+  deposit, dusk/night, the automation tests and packaging.
+
 Prerequisites: Windows 10/11, Unreal Engine 5.8 (Epic Games Launcher), Visual Studio 2022 with
 the "Game development with C++" workload (or Rider), Git with Git LFS. Follow the README's
 [Getting Started](../README.md#getting-started) up to and including generating project files.
@@ -17,10 +32,10 @@ Tick each box only when the observed result matches.
 
 - [ ] Right-click `Seminole.uproject` > **Generate Visual Studio project files** completes
       without errors and produces `Seminole.sln` (ignored by Git).
-- [ ] In Visual Studio, configuration **Development Editor | Win64**, project `Seminole`:
+- [x] In Visual Studio, configuration **Development Editor | Win64**, project `Seminole`:
       **Build** succeeds with no errors. (Warnings about the deprecated legacy input path are
       acceptable; errors are not.)
-- [ ] The build produced `Binaries/Win64/UnrealEditor-Seminole.dll`.
+- [x] The build produced `Binaries/Win64/UnrealEditor-Seminole.dll`.
 
 ## 2. Open the editor and the startup map
 
@@ -107,7 +122,7 @@ compile errors are the most likely failure and should be reported with the exact
 
 ### 7.1 Compile
 
-- [ ] **Development Editor | Win64** builds with no errors after regenerating project files
+- [x] **Development Editor | Win64** builds with no errors after regenerating project files
       (new folders `Survival/`, `World/`, `Inventory/`, `Interaction/`, `Community/`, `UI/`,
       `Tests/` under `Source/Seminole/`; new module dependency `DeveloperSettings` in
       `Seminole.Build.cs`).
