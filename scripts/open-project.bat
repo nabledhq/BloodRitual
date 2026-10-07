@@ -1,5 +1,5 @@
 @echo off
-rem Opens Seminole.uproject in Unreal Editor 5.8.
+rem Opens BloodRitual.uproject in Unreal Editor 5.8.
 rem
 rem   1. If UE_ROOT is set and %UE_ROOT%\Engine\Binaries\Win64\UnrealEditor.exe exists, that editor is used.
 rem      Example:  set "UE_ROOT=path\to\your\UE_5.8"
@@ -10,10 +10,10 @@ setlocal
 
 set "REPO_ROOT=%~dp0.."
 for %%I in ("%REPO_ROOT%") do set "REPO_ROOT=%%~fI"
-set "UPROJECT=%REPO_ROOT%\Seminole.uproject"
+set "UPROJECT=%REPO_ROOT%\BloodRitual.uproject"
 
 if not exist "%UPROJECT%" (
-    echo [open-project] ERROR: Seminole.uproject not found at "%UPROJECT%".
+    echo [open-project] ERROR: BloodRitual.uproject not found at "%UPROJECT%".
     exit /b 1
 )
 

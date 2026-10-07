@@ -17,7 +17,7 @@ defended at night, not a city-scale horde.
 * The state flow is
   `Idle -> Wander -> Hear Noise -> Investigate -> Detect Player -> Chase -> Attack -> Lose Player -> Search -> Wander`.
 * StateTree tasks, conditions and evaluators are C++ in
-  `Source/Seminole/AI/`; tree assets and tuning are under `Content/AI/`.
+  `Source/BloodRitual/AI/`; tree assets and tuning are under `Content/AI/`.
 * **MassEntity is not used initially.** It remains an optional later step
   for distant or very large populations, with a hand-off to StateTree actors
   near players.
