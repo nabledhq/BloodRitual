@@ -1,15 +1,15 @@
 """Create and save the local test map /Game/Maps/L_TestMap (Content/Maps/L_TestMap.umap).
 
-The map contains the same four things ASeminoleGameMode spawns at runtime when a map lacks
-them: a 100 m x 100 m floor (/Engine/BasicShapes/Cube, tagged "SeminoleFloor"), a movable
+The map contains the same four things ABloodRitualGameMode spawns at runtime when a map lacks
+them: a 100 m x 100 m floor (/Engine/BasicShapes/Cube, tagged "BloodRitualFloor"), a movable
 directional light, a movable sky light and a PlayerStart above the floor. Running the game on
 this map therefore spawns nothing extra. The script is OPTIONAL: the project boots without it.
 
 Requirements
 ------------
-* Unreal Editor 5.8 with the project built (SeminoleEditor target).
+* Unreal Editor 5.8 with the project built (BloodRitualEditor target).
 * The "Python Editor Script Plugin" (PythonScriptPlugin), which is NOT enabled in
-  Seminole.uproject. Enable it locally: Edit > Plugins, search "Python Editor Script Plugin",
+  BloodRitual.uproject. Enable it locally: Edit > Plugins, search "Python Editor Script Plugin",
   tick Enabled, restart the editor. Do not commit the resulting .uproject change unless a
   ticket asks for it.
 
@@ -23,7 +23,7 @@ Either of these, from the editor:
 
 Or headless, from a terminal (adjust paths):
 
-    "<UE_ROOT>\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe" "<repo>\\Seminole.uproject" ^
+    "<UE_ROOT>\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe" "<repo>\\BloodRitual.uproject" ^
         -run=pythonscript -script="<repo>\\scripts\\editor\\create_test_map.py"
 
 Running the script again on an existing L_TestMap only adds whatever is missing.
@@ -47,9 +47,9 @@ import unreal
 
 MAP_PACKAGE_PATH = "/Game/Maps/L_TestMap"
 FLOOR_MESH_PATH = "/Engine/BasicShapes/Cube.Cube"
-FLOOR_TAG = "SeminoleFloor"
+FLOOR_TAG = "BloodRitualFloor"
 
-# Same layout as ASeminoleTestEnvironment (Source/Seminole/SeminoleTestEnvironment.cpp).
+# Same layout as ABloodRitualTestEnvironment (Source/BloodRitual/BloodRitualTestEnvironment.cpp).
 FLOOR_LOCATION = unreal.Vector(0.0, 0.0, -50.0)  # 1 m thick slab, top surface at Z = 0
 FLOOR_SCALE = unreal.Vector(100.0, 100.0, 1.0)  # cube is 1 m, so 100 m x 100 m x 1 m
 PLAYER_START_LOCATION = unreal.Vector(0.0, 0.0, 120.0)
@@ -86,7 +86,7 @@ def _spawn_floor(actor_subsystem):
     mesh = unreal.load_asset(FLOOR_MESH_PATH)
     if mesh is None:
         raise RuntimeError("Could not load {}".format(FLOOR_MESH_PATH))
-    floor = _spawn(actor_subsystem, unreal.StaticMeshActor, FLOOR_LOCATION, label="SeminoleFloor")
+    floor = _spawn(actor_subsystem, unreal.StaticMeshActor, FLOOR_LOCATION, label="BloodRitualFloor")
     floor.set_actor_scale3d(FLOOR_SCALE)
     floor.set_editor_property("tags", [unreal.Name(FLOOR_TAG)])
     component = floor.static_mesh_component
@@ -97,19 +97,19 @@ def _spawn_floor(actor_subsystem):
 
 
 def _spawn_directional_light(actor_subsystem):
-    light = _spawn(actor_subsystem, unreal.DirectionalLight, LIGHT_LOCATION, SUN_ROTATION, label="SeminoleSun")
+    light = _spawn(actor_subsystem, unreal.DirectionalLight, LIGHT_LOCATION, SUN_ROTATION, label="BloodRitualSun")
     light.light_component.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
     return light
 
 
 def _spawn_sky_light(actor_subsystem):
-    light = _spawn(actor_subsystem, unreal.SkyLight, LIGHT_LOCATION, label="SeminoleSkyLight")
+    light = _spawn(actor_subsystem, unreal.SkyLight, LIGHT_LOCATION, label="BloodRitualSkyLight")
     light.light_component.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
     return light
 
 
 def _spawn_player_start(actor_subsystem):
-    return _spawn(actor_subsystem, unreal.PlayerStart, PLAYER_START_LOCATION, label="SeminolePlayerStart")
+    return _spawn(actor_subsystem, unreal.PlayerStart, PLAYER_START_LOCATION, label="BloodRitualPlayerStart")
 
 
 def main():

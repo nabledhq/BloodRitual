@@ -1,6 +1,6 @@
-# Seminole architecture
+# Indigenous: Blood Ritual architecture
 
-Seminole is a 1–4 player co-op survival game set in the Florida Everglades
+*Indigenous: Blood Ritual* (code name `BloodRitual`) is a 1–4 player co-op survival game set in the Florida Everglades
 around 1900. Players are members of a Seminole camp: by day they travel the
 swamp by canoe and scavenge; by night they defend the camp against the
 infected. This document records the technical foundation every later
@@ -15,7 +15,7 @@ today is listed under [Implemented: vertical slice part 1](#implemented-vertical
 
 * Unreal Engine **5.8**, desktop first (Windows, then Linux and macOS as
   effort allows), distributed on Steam. See [ADR 0001](adr/0001-unreal-engine-5.md).
-* One game module, `Seminole`, under `Source/Seminole/`, with one subfolder
+* One game module, `BloodRitual`, under `Source/BloodRitual/`, with one subfolder
   per system (AI, Characters, Combat, Community, Inventory, Interaction,
   Multiplayer, Persistence, Survival, Vehicles, World). Each subfolder's
   `README.md` states its purpose.
@@ -26,7 +26,7 @@ today is listed under [Implemented: vertical slice part 1](#implemented-vertical
   See [ADR 0002](adr/0002-cpp-blueprint-hybrid.md).
 * Enhanced Input for all player input; Input Actions and Mapping Contexts are
   data assets under `Content/`. Until the Characters ticket lands, the
-  bootstrap `ASeminolePlaceholderCharacter` (module root) uses legacy
+  bootstrap `ABloodRitualProtagonistCharacter` (module root) uses legacy
   axis/action mappings from `Config/DefaultInput.ini` so the project boots
   without any input assets (the vertical slice added `Interact` = E the same
   way). The real character replaces it, keeping its inventory and
@@ -37,7 +37,7 @@ today is listed under [Implemented: vertical slice part 1](#implemented-vertical
 
 ### Intended plugins
 
-The project enables **no** plugins today (`Seminole.uproject` has an empty
+The project enables **no** plugins today (`BloodRitual.uproject` has an empty
 `Plugins` list). Each of the following is enabled in the later ticket that
 first needs it, never speculatively:
 
@@ -70,7 +70,7 @@ Idle -> Wander -> Hear Noise -> Investigate -> Detect Player -> Chase -> Attack 
 * `Lose Player` / `Search`: on losing sight, search around the last known
   position for a while, then fall back to `Wander`.
 
-StateTree tasks, conditions and evaluators are C++ in `Source/Seminole/AI/`;
+StateTree tasks, conditions and evaluators are C++ in `Source/BloodRitual/AI/`;
 the trees themselves and per-type tuning are assets under `Content/AI/`.
 AI runs on the host only (see Multiplayer); clients receive replicated
 movement and animation.
@@ -80,16 +80,16 @@ movement and animation.
 Noise is **one shared gameplay event**, not a per-system mechanic. See
 [ADR 0004](adr/0004-noise-event-system.md).
 
-* A world subsystem (`Source/Seminole/World/`) exposes
+* A world subsystem (`Source/BloodRitual/World/`) exposes
   `ReportNoise(Location, Loudness, Instigator, Tag)`. **Implemented** (part 1)
-  as `USeminoleNoiseSubsystem::EmitNoise(Location, Radius, Instigator)`; the
+  as `UBloodRitualNoiseSubsystem::EmitNoise(Location, Radius, Instigator)`; the
   tag parameter arrives with the first system that needs it.
 * Everything that makes noise calls it: footsteps, gunshots, melee impacts,
   canoe paddling, doors, dropped items, campfire work. Today: container
   searches.
 * The subsystem forwards each event to AI Perception's hearing sense and
   broadcasts a delegate so other systems (audio cues, UI, missions) can react
-  to the same event. Today it delivers to registered `ISeminoleNoiseListener`
+  to the same event. Today it delivers to registered `IBloodRitualNoiseListener`
   objects within the radius (plain 3D distance) and broadcasts
   `OnNoiseEmitted`; AI Perception forwarding is part 2's job.
 * Loudness is a radius in world units; falloff and material attenuation are
@@ -119,7 +119,7 @@ Noise is **one shared gameplay event**, not a per-system mechanic. See
 * Water is traversable by canoe (see Gameplay components) and slow to wade.
 * A day/night cycle is the clock for the scavenge and defense phases
   (Survival).
-* World code lives in `Source/Seminole/World/`; maps and PCG graphs under
+* World code lives in `Source/BloodRitual/World/`; maps and PCG graphs under
   `Content/Maps/` and `Content/Environments/`.
 
 ## Multiplayer/Steam
@@ -132,7 +132,7 @@ Noise is **one shared gameplay event**, not a per-system mechanic. See
 * Steam provides sessions, invites and friends-join through
   `OnlineSubsystemSteam`; the Steam AppID and Steamworks configuration are
   added when the Steam ticket is funded.
-* Code in `Source/Seminole/Multiplayer/`. No dedicated servers.
+* Code in `Source/BloodRitual/Multiplayer/`. No dedicated servers.
 
 ## Persistence
 
@@ -144,7 +144,7 @@ Noise is **one shared gameplay event**, not a per-system mechanic. See
   save system.
 * Clients joining a saved session receive state through normal replication;
   their own character is restored from the host's save when they reconnect.
-* Code in `Source/Seminole/Persistence/`.
+* Code in `Source/BloodRitual/Persistence/`.
 
 ## Gameplay components
 
@@ -154,12 +154,12 @@ Planned components and their folders:
 | Folder | Components |
 | --- | --- |
 | `Characters/` | Player and villager base characters, Enhanced Input, animation hooks |
-| `Survival/` | Health, stamina, hunger, day/night phase (`USeminoleDayClockComponent` exists) |
+| `Survival/` | Health, stamina, hunger, day/night phase (`UBloodRitualDayClockComponent` exists) |
 | `Combat/` | Weapons, melee and ranged attacks, damage |
-| `Inventory/` | Items, containers, equipment (`USeminoleInventoryComponent`, `ASeminoleSupplyContainer` exist) |
-| `Interaction/` | Interactable actors and the interaction component (`ISeminoleInteractable`, `USeminoleInteractionComponent` exist) |
+| `Inventory/` | Items, containers, equipment (`UBloodRitualInventoryComponent`, `ABloodRitualSupplyContainer` exist) |
+| `Interaction/` | Interactable actors and the interaction component (`IBloodRitualInteractable`, `UBloodRitualInteractionComponent` exist) |
 | `Vehicles/` | Canoe: a paddled pawn carrying passengers |
-| `Community/` | Villagers, roles, camp upgrades (`ASeminoleStockpile` exists) |
+| `Community/` | Villagers, roles, camp upgrades (`ABloodRitualStockpile` exists) |
 
 Every component that can make noise reports it through the noise subsystem.
 
@@ -169,7 +169,7 @@ Every component that can make noise reports it through the noise subsystem.
   keyboard/mouse and gamepad, and for a single activatable-widget stack.
 * HUD (health, stamina, time of day, noise indicator), inventory, pause and
   session menus. Widget assets under `Content/UI/`. Until the UI ticket,
-  `ASeminoleHUD` (`Source/Seminole/UI/`) draws the slice's HUD with the
+  `ABloodRitualHUD` (`Source/BloodRitual/UI/`) draws the slice's HUD with the
   `AHUD` Canvas so no widget assets are needed.
 
 ## Audio
@@ -188,6 +188,12 @@ Every component that can make noise reports it through the noise subsystem.
 * Characters, environments, items and weapons each have a `Content/`
   folder; naming and texel-density conventions are set by the first art
   ticket.
+* Until then the slice uses stand-in art built by scripts: CC0 Poly Haven models and
+  ground (`scripts/editor/import_cc0_assets.py`) and a MakeHuman (MPFB) Seminole man in
+  generated period clothing with retargeted CC0 Quaternius clips
+  (`scripts/blender/build_protagonist.py`, `scripts/editor/import_protagonist.py`), with
+  `SM_`, `SKM_`, `MI_`, `T_`, `A_` and `BS_` prefixes. See
+  [ADR 0011](adr/0011-cc0-stand-in-art.md) and `ASSETS_LICENSES.md`.
 * The period setting (Seminole camp life around 1900) should be reviewed by
   cultural advisors before final art is accepted.
 
@@ -237,32 +243,34 @@ little stronger and the night a little harder.
 
 Part 1 of the slice (ticket #23) delivers the non-combat core: tunable
 config, the day clock, the noise subsystem, looting into an inventory and
-depositing into a hub stockpile. Everything is C++ with runtime-spawned
-placeholder primitives; there are no new assets. See
+depositing into a hub stockpile. Everything is C++ and runtime-spawned. See
 [ADR 0009](adr/0009-vertical-slice-placeholder-systems.md) for the decisions.
+The primitives it started with have since been replaced by CC0 stand-in
+models, a ground texture, a sky and an animated Seminole man
+([ADR 0011](adr/0011-cc0-stand-in-art.md)).
 
 | System | Class | Folder |
 | --- | --- | --- |
-| Config | `USeminoleSettings` (`UDeveloperSettings`, Project Settings > Game > Seminole) | module root |
-| Day clock | `USeminoleDayClockComponent` on `ASeminoleGameState` | `Survival/` |
-| Lighting | `USeminoleDayLightingComponent` on `ASeminoleTestEnvironment` | `World/` |
-| Noise | `USeminoleNoiseSubsystem`, `ISeminoleNoiseListener`, `ASeminoleNoiseListenerPlaceholder` | `World/` |
-| Supplies and inventory | `ESeminoleSupplyType`, `FSeminoleSupplyCounts`, `USeminoleInventoryComponent` | `Inventory/` |
-| Containers | `ASeminoleSupplyContainer` | `Inventory/` |
-| Interaction | `ISeminoleInteractable`, `USeminoleInteractionComponent` | `Interaction/` |
-| Stockpile | `ASeminoleStockpile` | `Community/` |
-| HUD | `ASeminoleHUD` (Canvas, no widgets) | `UI/` |
-| Tests | `IMPLEMENT_SIMPLE_AUTOMATION_TEST` under `Seminole.*` | `Tests/` |
+| Config | `UBloodRitualSettings` (`UDeveloperSettings`, Project Settings > Game > Blood Ritual) | module root |
+| Day clock | `UBloodRitualDayClockComponent` on `ABloodRitualGameState` | `Survival/` |
+| Lighting | `UBloodRitualDayLightingComponent` on `ABloodRitualTestEnvironment` | `World/` |
+| Noise | `UBloodRitualNoiseSubsystem`, `IBloodRitualNoiseListener`, `ABloodRitualNoiseListenerPlaceholder` | `World/` |
+| Supplies and inventory | `EBloodRitualSupplyType`, `FBloodRitualSupplyCounts`, `UBloodRitualInventoryComponent` | `Inventory/` |
+| Containers | `ABloodRitualSupplyContainer` | `Inventory/` |
+| Interaction | `IBloodRitualInteractable`, `UBloodRitualInteractionComponent` | `Interaction/` |
+| Stockpile | `ABloodRitualStockpile` | `Community/` |
+| HUD | `ABloodRitualHUD` (Canvas, no widgets) | `UI/` |
+| Tests | `IMPLEMENT_SIMPLE_AUTOMATION_TEST` under `BloodRitual.*` | `Tests/` |
 
 How the pieces connect:
 
 * **Config.** Every tunable (day 480 s, dusk 60 s, bow 500 uu and rifle
   3000 uu noise radii, 2 s container search, per-container supply amounts,
   lighting values, interaction range) is a `Config` property of
-  `USeminoleSettings` with its default in C++. Gameplay code reads
-  `GetDefault<USeminoleSettings>()`; nothing hard-codes a value. Edits in
+  `UBloodRitualSettings` with its default in C++. Gameplay code reads
+  `GetDefault<UBloodRitualSettings>()`; nothing hard-codes a value. Edits in
   Project Settings land in `Config/DefaultGame.ini`.
-* **Clock.** `ASeminoleGameState` owns the clock so the phase is host-owned
+* **Clock.** `ABloodRitualGameState` owns the clock so the phase is host-owned
   state ready for replication. The clock starts in Day on `BeginPlay`, runs
   Day -> Dusk -> Night and stops at Night. `OnPhaseChanged` (dynamic
   multicast) fires on every transition and on `ResetToDay()`;
@@ -275,37 +283,37 @@ How the pieces connect:
   values -> Dusk values across Day, Dusk values -> Night values across Dusk,
   Night values held at Night.
 * **Noise.** `EmitNoise(Location, Radius, Instigator)` delivers an
-  `FSeminoleNoiseEvent` to every registered `ISeminoleNoiseListener` whose
+  `FBloodRitualNoiseEvent` to every registered `IBloodRitualNoiseListener` whose
   `GetNoiseListenerLocation()` is within `Radius`. The placeholder listener
   (a red sphere at the scavenging area) flashes yellow and logs when it hears
   something. **Part 2**'s infected implement the interface and register in
   `BeginPlay`; weapons read `BowNoiseRadius` / `RifleNoiseRadius` from the
   settings and call `EmitNoise`.
-* **Supplies.** `ESeminoleSupplyType { Food, Ammo, Materials }` with integer
-  counts in `FSeminoleSupplyCounts` (one field per type so it can be marked
-  `Replicated` later). `USeminoleInventoryComponent` on the player pawn has
+* **Supplies.** `EBloodRitualSupplyType { Food, Ammo, Materials }` with integer
+  counts in `FBloodRitualSupplyCounts` (one field per type so it can be marked
+  `Replicated` later). `UBloodRitualInventoryComponent` on the player pawn has
   add, remove (fails without change if insufficient), query and `TakeAll`.
-* **Interaction.** `ISeminoleInteractable` (`CanInteract`, `Interact`,
+* **Interaction.** `IBloodRitualInteractable` (`CanInteract`, `Interact`,
   `GetInteractionPrompt`) is implemented by the container and the stockpile.
-  `USeminoleInteractionComponent` on the pawn picks the nearest interactable
+  `UBloodRitualInteractionComponent` on the pawn picks the nearest interactable
   within `InteractionRange` each tick (the HUD shows its prompt) and the
   legacy `Interact` action (`E`, `Config/DefaultInput.ini`) uses it. **Part 2**
   adds the canoe, **part 3** barricades, as further implementers.
-* **Containers.** `ASeminoleSupplyContainer::BeginSearch` starts a timed
+* **Containers.** `ABloodRitualSupplyContainer::BeginSearch` starts a timed
   search (emits noise with `ContainerSearchNoiseRadius`), `AdvanceSearch`
   moves it forward (fed by `Tick`), completion grants the configured
   supplies to the searcher's inventory, turns the crate grey and locks it:
-  a second search is refused. `USeminoleSettings::ScavengingContainers`
+  a second search is refused. `UBloodRitualSettings::ScavengingContainers`
   lists one loot table per spawned container.
-* **Stockpile.** `ASeminoleStockpile` holds the camp totals. `DepositAll`
+* **Stockpile.** `ABloodRitualStockpile` holds the camp totals. `DepositAll`
   moves a whole inventory in, `TrySpend(Type, Amount)` returns `false`
   without change when short. **Part 3** spends from it.
-* **Placeholders.** `ASeminoleTestEnvironment::EnsureSlicePlaceholders()`
+* **Placeholders.** `ABloodRitualTestEnvironment::EnsureSlicePlaceholders()`
   (called by the game mode after the scene basics) spawns, when the world
   has none: the stockpile at the hub (4 m in front of the PlayerStart), the
   configured containers in a row at the scavenging area 30 m along +X, and
   the noise listener 6 m beyond them.
-* **HUD.** `ASeminoleHUD::DrawHUD` draws the phase and remaining time, a
+* **HUD.** `ABloodRitualHUD::DrawHUD` draws the phase and remaining time, a
   centred dusk warning (and night notice), carried supplies, stockpile
   totals, the interaction prompt and a search progress bar.
 

@@ -13,22 +13,22 @@ recur across the parts and are recorded here once.
 
 ## Decision
 
-* **One `UDeveloperSettings` for tunables.** `USeminoleSettings`
+* **One `UDeveloperSettings` for tunables.** `UBloodRitualSettings`
   (`Config=Game, DefaultConfig`) holds every gameplay number of the slice
-  with its default in C++. Code reads `GetDefault<USeminoleSettings>()`
+  with its default in C++. Code reads `GetDefault<UBloodRitualSettings>()`
   and never hard-codes a tunable; designers edit Project Settings > Game >
-  Seminole and the values land in `Config/DefaultGame.ini`. Data assets per
+  Blood Ritual and the values land in `Config/DefaultGame.ini`. Data assets per
   item (ADR 0002) arrive when there is real content to describe.
 * **Authoritative state on framework objects.** The day clock is a component
-  on `ASeminoleGameState`; stockpile totals live on the authority-spawned
-  `ASeminoleStockpile`. Nothing is replicated yet (solo only), but the state
+  on `ABloodRitualGameState`; stockpile totals live on the authority-spawned
+  `ABloodRitualStockpile`. Nothing is replicated yet (solo only), but the state
   already sits where `Replicated` can be added without moving it (ADR 0005).
 * **Deterministic time.** Anything timed exposes an `Advance(DeltaSeconds)`
-  style entry point (`USeminoleDayClockComponent::Advance`,
-  `ASeminoleSupplyContainer::AdvanceSearch`) that `Tick` feeds in play and
+  style entry point (`UBloodRitualDayClockComponent::Advance`,
+  `ABloodRitualSupplyContainer::AdvanceSearch`) that `Tick` feeds in play and
   automation tests call directly. No system reads wall-clock time.
-* **C++ interfaces for cross-system contracts.** `ISeminoleNoiseListener`
-  and `ISeminoleInteractable` are `CannotImplementInterfaceInBlueprint`
+* **C++ interfaces for cross-system contracts.** `IBloodRitualNoiseListener`
+  and `IBloodRitualInteractable` are `CannotImplementInterfaceInBlueprint`
   interfaces; Blueprint subclasses of a C++ implementer inherit the
   implementation. This keeps dispatch plain C++ and testable.
 * **Placeholder content is runtime-spawned C++ primitives.** The test
@@ -39,7 +39,7 @@ recur across the parts and are recorded here once.
   are later tickets.
 * **Tests run in a throwaway game world.** Automation tests use
   `IMPLEMENT_SIMPLE_AUTOMATION_TEST` and, where actors or subsystems are
-  needed, `FSeminoleTestWorld` (`UWorld::CreateWorld` + a world context).
+  needed, `FBloodRitualTestWorld` (`UWorld::CreateWorld` + a world context).
   There is no game mode in that world, so `BeginPlay` does not run; tests
   register listeners and start clocks explicitly.
 

@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-Noise is the central tension of Seminole: scavenging quietly by day and
+Noise is the central tension of the game: scavenging quietly by day and
 holding the camp at night both depend on what the infected hear. Footsteps,
 gunshots, melee, paddling, doors, dropped items and camp work all make
 noise. If each system reported noise its own way, the AI, audio and UI would
@@ -13,7 +13,7 @@ drift apart and tuning would be scattered.
 ## Decision
 
 * Noise is **one shared gameplay event** handled by a single world subsystem
-  (`Source/Seminole/World/`), with an API of the form
+  (`Source/BloodRitual/World/`), with an API of the form
   `ReportNoise(Location, Loudness, Instigator, Tag)`.
 * Every noise source calls this one entry point; nothing talks to AI
   Perception's hearing sense directly.
@@ -29,4 +29,4 @@ drift apart and tuning would be scattered.
 * One place to tune, log and visualise noise; one place to replicate it.
 * AI, audio and UI agree on what happened, by construction.
 * Every gameplay ticket that adds a noisy action depends on this subsystem
-  and must call it; the stub README in `Source/Seminole/World/` records this.
+  and must call it; the stub README in `Source/BloodRitual/World/` records this.

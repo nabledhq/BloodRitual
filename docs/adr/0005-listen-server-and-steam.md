@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-Seminole is co-op for 1–4 players, sold on Steam. Options are a listen
+The game is co-op for 1–4 players, sold on Steam. Options are a listen
 server (one player's game hosts), dedicated servers (hosted by us or by
 players) or peer-to-peer. Dedicated servers need infrastructure and
 operations the project does not want; the player count is small and sessions
@@ -19,7 +19,7 @@ are friend groups.
   the Steam ticket, not now.
 * Authority on the host for AI, noise, damage, inventory mutations, loot and
   the day/night clock. Clients predict only their own movement.
-* Code in `Source/Seminole/Multiplayer/`.
+* Code in `Source/BloodRitual/Multiplayer/`.
 
 ## Consequences
 

@@ -18,7 +18,7 @@ or a cloud/backend store.
   using `USaveGame` subclasses and the engine's save system.
 * Clients receive state through replication on join; a returning client's
   character is restored from the host's save.
-* Code in `Source/Seminole/Persistence/`.
+* Code in `Source/BloodRitual/Persistence/`.
 
 ## Consequences
 
