@@ -55,7 +55,9 @@ Tick each box only when the observed result matches.
       Map are both `Entry`.
 - [ ] **Edit > Project Settings > Input**: the Axis Mappings `MoveForward` (W/S),
       `MoveRight` (D/A), `Turn` (Mouse X), `LookUp` (Mouse Y, scale -1) and the Action Mappings
-      `Jump` (Space Bar) and `Interact` (E) are listed; Default Player Input Class is
+      `Jump` (Space Bar), `Crouch` (C), `Roll` (Left Alt), `Interact` (E), `Attack` (Left Mouse
+      Button), `Aim` (Right Mouse Button), `Reload` (R) and `WeaponTomahawk` / `WeaponRockSledge` /
+      `WeaponBow` / `WeaponRifle` (1-4) are listed; Default Player Input Class is
       `PlayerInput`, Default Input Component Class is `InputComponent`.
 
 ## 3. Play In Editor: scene, movement, look, jump
@@ -68,7 +70,7 @@ runtime-spawned floor).
       shows four scene lines: spawned a floor, spawned a movable directional light, spawned a
       movable sky light, spawned a PlayerStart (plus the slice lines checked in section 7).
 - [ ] The scene shows a large flat muddy floor with ferns, shrubs and rocks, lit by a directional
-      light under a blue sky, with the Seminole man (the placeholder character) standing on it, viewed from a
+      light under a blue sky, with the Protagonist (the stand-in player character) standing on it, viewed from a
       third-person camera behind it.
       The sky is black (there is no atmosphere in this shell); that is expected.
 - [ ] The World Outliner lists `BloodRitualTestEnvironment`, `BloodRitualFloor`, `BloodRitualSun`,
@@ -79,7 +81,34 @@ runtime-spawned floor).
       his shadowed side is lit by the sky, not black.
 - [ ] Moving the **mouse** orbits the camera around the character (left/right = yaw, up/down =
       pitch; moving the mouse up looks up).
-- [ ] **Space** jumps; the character leaves the floor and lands on it again.
+- [ ] **Space** jumps; the character tucks his legs on take-off, holds an airborne pose and,
+      landing almost still, absorbs the landing in a squat. Running on through a landing skips
+      the squat.
+- [ ] **C** crouches: the character drops into a crouch, moves slowly (crouched walk) and stands
+      up on **C** again (or on **Space**).
+- [ ] **Left Alt** rolls: a dive roll a few metres along the movement keys (or forward with
+      none), then he gets up; moving during the get-up ends it early. Rolling is not possible
+      crouched or in the air.
+- [ ] **E** next to a crate, barrel or basket turns him to it and he rummages until the search
+      completes; **E** at the stockpile with supplies plays a short reach. Moving ends either
+      animation (the search itself carries on).
+- [ ] **1-4** put the tomahawk, rock sledgehammer, bow and rifle in his right hand (the HUD,
+      bottom left, names it; the same key again puts it away). Standing still he holds it at the
+      ready.
+- [ ] **Left mouse** with the tomahawk or sledgehammer swings (the sledgehammer slower); with the
+      bow an arrow flies where the crosshair points and Ammo drops by one; with the rifle, after
+      **R** has loaded it from carried Ammo (the HUD shows loaded / magazine and carried), a shot
+      with a muzzle flash. An empty rifle reloads by itself if he carries Ammo.
+- [ ] Holding **right mouse** with the bow or rifle pulls the camera in over his right shoulder,
+      turns him with the camera and slows him to a walk; standing still he raises the weapon.
+- [ ] Four grey infected wander around the scavenging area (30 m out). Coming within about 16 m in
+      front of one (or 3 m behind it) makes it run at him and punch; a rifle shot draws every
+      infected within 30 m to the spot. A hit makes an infected flinch (the crosshair flashes
+      red); about two rifle rounds or arrows, two sledgehammer blows or three tomahawk blows kill
+      it, and the body stays on the ground for a while.
+- [ ] Infected blows take his health down (bottom left); at zero he falls, the HUD says he died,
+      and five seconds later he is back at the PlayerStart with full health, 6 Ammo and nothing
+      else carried.
 - [ ] Walking to the edge of the floor (50 m from the start) and off it makes the character
       fall, confirming the floor has collision and nothing else is holding the pawn.
 - [ ] Press Play a second time: the same `LogBloodRitual` spawn lines as the first time (no

@@ -33,7 +33,7 @@ namespace
 	};
 
 	// Fallback: /Engine/BasicShapes/Cube (1 m, centred) as an 80 x 80 x 60 cm crate.
-	const FVector FallbackScale(0.8f, 0.8f, 0.6f);
+	const FVector ContainerFallbackScale(0.8f, 0.8f, 0.6f);
 }
 
 ABloodRitualSupplyContainer::ABloodRitualSupplyContainer()
@@ -67,7 +67,7 @@ void ABloodRitualSupplyContainer::SetVisualVariant(int32 Variant)
 	else
 	{
 		Mesh->SetStaticMesh(FallbackMesh);
-		Mesh->SetRelativeScale3D(FallbackScale);
+		Mesh->SetRelativeScale3D(ContainerFallbackScale);
 	}
 }
 

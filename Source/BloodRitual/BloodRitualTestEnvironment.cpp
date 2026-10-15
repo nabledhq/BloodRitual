@@ -3,6 +3,7 @@
 #include "BloodRitualTestEnvironment.h"
 
 #include "BloodRitual.h"
+#include "AI/BloodRitualInfected.h"
 #include "BloodRitualSettings.h"
 #include "Community/BloodRitualStockpile.h"
 #include "Inventory/BloodRitualSupplyContainer.h"
@@ -48,6 +49,9 @@ namespace
 	const float ContainerSpacing = 250.0f;
 	// The listener sphere (1 m) sits beyond the containers, inside the search noise radius.
 	const FVector NoiseListenerOffset(600.0f, 0.0f, 50.0f);
+	// The infected stand in a loose ring around the scavenging area, clear of the containers.
+	const float InfectedRingRadius = 900.0f;
+	const float InfectedSpawnHeight = 100.0f;
 
 	// Camp scenery (CC0 Poly Haven models; see ASSETS_LICENSES.md). Everything stays out of the
 	// corridor from the hub to beyond the scavenging area, so the walk between them is clear.
@@ -218,6 +222,11 @@ void ABloodRitualTestEnvironment::EnsureSlicePlaceholders()
 	if (CountScenery(World) == 0)
 	{
 		SpawnCampScenery();
+	}
+	TActorIterator<ABloodRitualInfected> InfectedIt(World);
+	if (!InfectedIt)
+	{
+		SpawnInfected();
 	}
 }
 
@@ -459,6 +468,33 @@ void ABloodRitualTestEnvironment::SpawnScavengingContainers()
 	}
 
 	UE_LOG(LogBloodRitual, Log, TEXT("BloodRitualTestEnvironment: spawned %d scavenging containers around %s."), Spawned, *ScavengingAreaLocation.ToString());
+}
+
+void ABloodRitualTestEnvironment::SpawnInfected()
+{
+	const int32 Count = GetDefault<UBloodRitualSettings>()->InfectedCount;
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	int32 Spawned = 0;
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Angle = 2.0f * PI * (Index + 0.5f) / FMath::Max(Count, 1);
+		const FVector Location = ScavengingAreaLocation
+			+ FVector(FMath::Cos(Angle) * InfectedRingRadius, FMath::Sin(Angle) * InfectedRingRadius, InfectedSpawnHeight);
+		const FRotator Facing(0.0f, FMath::RadiansToDegrees(Angle) + 180.0f, 0.0f);
+		ABloodRitualInfected* Infected = GetWorld()->SpawnActor<ABloodRitualInfected>(ABloodRitualInfected::StaticClass(), Location, Facing, SpawnParams);
+		if (Infected == nullptr)
+		{
+			continue;
+		}
+#if WITH_EDITOR
+		Infected->SetActorLabel(FString::Printf(TEXT("BloodRitualInfected%d"), Index + 1));
+#endif
+		++Spawned;
+	}
+	UE_LOG(LogBloodRitual, Log, TEXT("BloodRitualTestEnvironment: spawned %d infected around %s."), Spawned, *ScavengingAreaLocation.ToString());
 }
 
 void ABloodRitualTestEnvironment::SpawnNoiseListener()

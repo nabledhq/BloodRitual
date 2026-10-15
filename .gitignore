@@ -23,3 +23,6 @@ Build/Receipts/
 
 # Packaged game output (see README: Platforms > Windows > Development, output to Packaged/)
 Packaged/
+
+# Python bytecode (Blender imports scripts/blender/protagonist_outfit.py)
+__pycache__/

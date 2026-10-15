@@ -112,7 +112,9 @@ Neither MacCauley nor Skinner mentions a vest. Yet a **dark waistcoat over the s
 
 ## The stand-in reads as 1920s patchwork worn with an 1830s sash
 
-The current stand-in mixes accurate elements with later patchwork-era and earlier pre-removal signals. The table separates what to keep from what to change, in order of visual impact.
+> This review covers an earlier stand-in (big shirt, sash, kerchief and turban), since replaced by the Protagonist's concept-art outfit ([ADR 0011](../adr/0011-cc0-stand-in-art.md)). It stays as the reference for period-accurate dress.
+
+The stand-in mixes accurate elements with later patchwork-era and earlier pre-removal signals. The table separates what to keep from what to change, in order of visual impact.
 
 | Stand-in element | c. 1900 evidence | Correction |
 |---|---|---|

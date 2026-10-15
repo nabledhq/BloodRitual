@@ -1,4 +1,4 @@
-# 0011. Stand-in art: CC0 props, a MakeHuman player in project-made period dress
+# 0011. Stand-in art: CC0 props, a MakeHuman player in a project-made outfit
 
 Status: Accepted
 
@@ -25,27 +25,36 @@ separate work.
   * Two master materials, `M_PropMaster` (opaque) and `M_FoliageMaster` (masked,
     two-sided), take base colour, normal and AO/roughness/metallic maps and a
     `Tint` parameter that gameplay code uses to darken searched containers.
-* **Player: a Seminole man of around 1900 built in Blender with MPFB
-  (MakeHuman)**, whose base mesh, rig and the skin, eye, brow, lash and hair
-  assets used are CC0. `scripts/blender/build_protagonist.py` sets his body,
-  tints the skin, and generates the clothing from his own body: a knee-length
-  big shirt with appliqué-style bands (bands rather than machine patchwork,
-  which spread in the 1910s), a finger-woven sash, a kerchief and a wrapped
-  plaid turban, with procedurally painted textures. The clothing is this
-  repository's own work. Body faces hidden under the shirt are removed.
+* **Player: the Protagonist, a fictional warrior built in Blender with MPFB
+  (MakeHuman)** after the project's concept renders (`renders/`). His base mesh,
+  rig and the skin, eye, brow, lash, hair, beard and moustache assets used are
+  CC0. `scripts/blender/build_protagonist.py` sets his body (heavily muscled,
+  in his forties), tints the skin and hair, and `protagonist_outfit.py`
+  generates the outfit from his own body: shells copied from the skin
+  (leggings, boots, bracers, hip flaps), bands, tubes, cards and discs
+  (headband, beadwork, necklaces, medallions, belt, aprons, braids, feathers)
+  and a fur cape, all skinned to his rig, with procedurally painted textures.
+  The outfit is this repository's own work. Body faces hidden under the
+  shells are removed. (An earlier version wore period Seminole dress; the
+  research behind it is kept in `docs/research/`.)
   `scripts/editor/import_protagonist.py` imports him into
   `Content/Characters/Protagonist`.
 * **Animation: Quaternius' Universal Animation Library (CC0), retargeted.** The
   Blender script re-exports the clips the game uses in centimetres with an
   unscaled root (the original FBX has a root scaled by 100, which the retargeter
-  carries into every clip). The Unreal script builds a speed blend space on
-  them, retargets it and the jump loop onto the man with IK Rigs and an IK
-  Retargeter, and then deletes the source and the retargeting tools: only the
-  retargeted clips ship.
+  carries into every clip). The Unreal script builds speed blend spaces on
+  them (standing and crouched locomotion), retargets them and the one-shot clips
+  (jump start, loop and land, roll, interact, pick up) onto the Protagonist with IK
+  Rigs and an IK Retargeter, and then deletes the source and the retargeting tools:
+  only the retargeted clips ship. Combat clips (sword, pistol, punch, hit,
+  death) were added with the weapons and the infected (ADR 0012); the rest
+  (swimming, sitting and so on) wait for the gameplay that uses them.
 * **No Animation Blueprint yet.** The player's skeletal mesh runs in single-node
-  mode and plays either the blend space over ground speed (idle, walk, jog,
-  sprint) or the jump loop while falling, chosen in C++ each tick. The real
-  character ticket brings an Animation Blueprint and Enhanced Input.
+  mode and plays one asset at a time, chosen in C++ each tick: a one-shot action
+  while one runs (the roll, jump take-off and landing, searching a container or
+  depositing), the jump loop while falling, or the standing or crouched blend
+  space over ground speed. Switching does not blend. The real character ticket
+  brings an Animation Blueprint (blending, montages) and Enhanced Input.
 * **Scripted, repeatable imports.** The project enables the **Python Editor
   Script Plugin** (editor only). Engine operations Python cannot reach (building
   a blend space's runtime data) go through `UBloodRitualEditorScripting`, an
@@ -67,11 +76,11 @@ separate work.
 ## Consequences
 
 * The slice is readable and closer to the setting, while every piece is still
-  clearly a stand-in: the man is a game-art interpretation that has not been
-  reviewed by Seminole cultural advisors. Swapping in final art means changing
+  clearly a stand-in. The Protagonist is a fantasy design after concept art,
+  not period dress, and has not been reviewed by Seminole cultural advisors. Swapping in final art means changing
   asset paths in C++ (or moving them to data assets when the art ticket asks).
-* The repository carries 40.9 MB of binary content; contributors need Git LFS
-  before cloning, as the README already requires. Rebuilding the man needs
+* The repository carries 48.2 MB of binary content; contributors need Git LFS
+  before cloning, as the README already requires. Rebuilding the Protagonist needs
   Blender 4.2+ with MPFB and its CC0 system assets; playing does not.
 * Re-importing replaces the content folders wholesale; the scripts' headers say
   how. Hand edits to those assets would be lost and belong in new assets.

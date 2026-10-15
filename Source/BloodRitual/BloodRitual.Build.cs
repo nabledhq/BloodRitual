@@ -17,6 +17,9 @@ public class BloodRitual : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
+			// AAIController (the infected).
+			"AIModule",
+			"GameplayTasks",
 			// UBloodRitualSettings (UDeveloperSettings) lives in this module.
 			"DeveloperSettings"
 		});

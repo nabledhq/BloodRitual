@@ -74,6 +74,7 @@ private:
 	void SpawnStockpile();
 	void SpawnScavengingContainers();
 	void SpawnNoiseListener();
+	void SpawnInfected();
 	void SpawnCampScenery();
 
 	/**
