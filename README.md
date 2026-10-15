@@ -15,11 +15,14 @@ The project is a bootable shell plus **part 1 of the playable vertical slice**:
 it opens an empty engine map, `ABloodRitualGameMode` spawns a mud-and-leaves floor,
 lights, a PlayerStart, a hub stockpile, three scavenging containers, a noise
 listener and camp scenery (a fire pit, a stump, a fallen trunk, rocks, ferns and
-shrubs) under a sky at runtime, and `ABloodRitualProtagonistCharacter` (a Seminole man of around
-1900 in a big shirt, sash, kerchief and turban, animated, with a third-person camera and
-WASD / mouse look / jump / interact) is the pawn. A day
+shrubs) under a sky at runtime, and `ABloodRitualProtagonistCharacter` (the Protagonist, a bearded
+warrior in a beaded and feathered outfit with a fur cape, animated, with a third-person camera and
+WASD / mouse look / jump / crouch / roll / interact) is the pawn. He fights with a
+tomahawk, a rock sledgehammer, a bow and a lever-action rifle (rounds and arrows come out of
+the Ammo he loots), and four **infected** wander the scavenging area: they hear shots and
+blows, chase him on sight and fight back; he dies and respawns at camp. A day
 clock runs Day -> Dusk -> Night, dimming the lights, and a Canvas HUD shows the
-phase, your carried supplies and the stockpile. Everything is stand-in art, not final art:
+phase, your carried supplies, the stockpile, your health and your weapon. Everything is stand-in art, not final art:
 CC0 models and ground from Poly Haven, and a MakeHuman (MPFB) man whose clothing is generated
 by this repository, animated with retargeted CC0 Quaternius clips (see
 [ASSETS_LICENSES.md](ASSETS_LICENSES.md)). The character is a game-art interpretation that has
@@ -82,9 +85,13 @@ the `.uproject` file association. The editor starts on the engine map
 
 Press **Play** (set *Spawn player at* to **Default Player Start** in the Play
 dropdown, see Troubleshooting) or **Play > Standalone Game**. You should see a
-100 m x 100 m muddy clearing with ferns and shrubs under a blue sky, the Seminole man and a
+100 m x 100 m muddy clearing with ferns and shrubs under a blue sky, the Protagonist and a
 third-person camera behind it.
-Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps, **E** interacts.
+Controls: **W/A/S/D** move, **mouse** looks, **Space** jumps, **C** crouches (toggle),
+**Left Alt** rolls, **E** interacts (search a container, deposit at the stockpile).
+Fighting: **1** tomahawk, **2** rock sledgehammer, **3** bow, **4** rifle (the same key again
+puts it away), **left mouse** attacks, **right mouse** (held) aims a bow or rifle over the
+shoulder, **R** reloads the rifle. He starts with 6 Ammo; the middle container holds 10 more.
 
 The vertical slice (part 1) loop:
 
@@ -113,10 +120,14 @@ The stand-in art is committed, so you only rebuild it to change it:
 
 - `Content/Items` and `Content/Environments`: `scripts/editor/import_cc0_assets.py`
   downloads the Poly Haven models and imports them.
-- `Content/Characters`: `scripts/blender/build_protagonist.py` builds the man in
-  Blender 4.2+ with the MPFB extension and its CC0 "MakeHuman system assets" pack
-  (body, clothing, textures, and a clean copy of the Quaternius clips), then
-  `scripts/editor/import_protagonist.py` imports him and retargets the clips.
+- `Content/Characters`: `scripts/blender/build_protagonist.py` builds the Protagonist
+  after the concept renders in `renders/`, in Blender 4.2+ with the MPFB extension and
+  its CC0 "MakeHuman system assets", "skins02" and "bodyparts05" packs (body, outfit,
+  textures, and a clean copy of the Quaternius clips), `scripts/blender/build_infected.py`
+  builds the infected on the same rig, then `scripts/editor/import_protagonist.py`
+  imports both and retargets the clips.
+- `Content/Weapons`: `scripts/blender/build_weapons.py` (after the Protagonist build)
+  models the weapons in his grip, then `scripts/editor/import_weapons.py` imports them.
 
 Each script's header explains how to run it.
 

@@ -154,8 +154,8 @@ Planned components and their folders:
 | Folder | Components |
 | --- | --- |
 | `Characters/` | Player and villager base characters, Enhanced Input, animation hooks |
-| `Survival/` | Health, stamina, hunger, day/night phase (`UBloodRitualDayClockComponent` exists) |
-| `Combat/` | Weapons, melee and ranged attacks, damage |
+| `Survival/` | Health, stamina, hunger, day/night phase (`UBloodRitualDayClockComponent`, `UBloodRitualHealthComponent` exist) |
+| `Combat/` | Weapons, melee and ranged attacks, damage (`UBloodRitualWeaponComponent`, `ABloodRitualArrow` exist) |
 | `Inventory/` | Items, containers, equipment (`UBloodRitualInventoryComponent`, `ABloodRitualSupplyContainer` exist) |
 | `Interaction/` | Interactable actors and the interaction component (`IBloodRitualInteractable`, `UBloodRitualInteractionComponent` exist) |
 | `Vehicles/` | Canoe: a paddled pawn carrying passengers |
@@ -189,13 +189,16 @@ Every component that can make noise reports it through the noise subsystem.
   folder; naming and texel-density conventions are set by the first art
   ticket.
 * Until then the slice uses stand-in art built by scripts: CC0 Poly Haven models and
-  ground (`scripts/editor/import_cc0_assets.py`) and a MakeHuman (MPFB) Seminole man in
-  generated period clothing with retargeted CC0 Quaternius clips
+  ground (`scripts/editor/import_cc0_assets.py`) and a MakeHuman (MPFB) Protagonist, a
+  fictional warrior in a generated outfit modelled after the concept renders in `renders/`,
+  with retargeted CC0 Quaternius clips
   (`scripts/blender/build_protagonist.py`, `scripts/editor/import_protagonist.py`), with
   `SM_`, `SKM_`, `MI_`, `T_`, `A_` and `BS_` prefixes. See
   [ADR 0011](adr/0011-cc0-stand-in-art.md) and `ASSETS_LICENSES.md`.
 * The period setting (Seminole camp life around 1900) should be reviewed by
-  cultural advisors before final art is accepted.
+  cultural advisors before final art is accepted. The Protagonist's current look is a
+  fantasy design (feathers, beadwork, fur cape) after the concept renders, not period
+  Seminole dress; `docs/research/` records what Seminole men wore around 1900.
 
 ## Source control
 
@@ -246,7 +249,7 @@ config, the day clock, the noise subsystem, looting into an inventory and
 depositing into a hub stockpile. Everything is C++ and runtime-spawned. See
 [ADR 0009](adr/0009-vertical-slice-placeholder-systems.md) for the decisions.
 The primitives it started with have since been replaced by CC0 stand-in
-models, a ground texture, a sky and an animated Seminole man
+models, a ground texture, a sky and an animated Protagonist
 ([ADR 0011](adr/0011-cc0-stand-in-art.md)).
 
 | System | Class | Folder |
@@ -261,6 +264,15 @@ models, a ground texture, a sky and an animated Seminole man
 | Stockpile | `ABloodRitualStockpile` | `Community/` |
 | HUD | `ABloodRitualHUD` (Canvas, no widgets) | `UI/` |
 | Tests | `IMPLEMENT_SIMPLE_AUTOMATION_TEST` under `BloodRitual.*` | `Tests/` |
+| Health | `UBloodRitualHealthComponent` (player and infected) | `Survival/` |
+| Weapons | `UBloodRitualWeaponComponent`, `ABloodRitualArrow`, `EBloodRitualWeapon` | `Combat/` |
+| Infected | `ABloodRitualInfected`, `ABloodRitualInfectedController` | `AI/` |
+
+Part 2 has begun with weapons, health and a first infected (ADR 0012): a tomahawk, a rock
+sledgehammer, a bow and a rifle that use looted Ammo, and infected that hear noise, chase on
+sight and fight. Their brain is a C++ state machine with the AI states above, steering
+straight at its goal (no NavMesh in the runtime-spawned map yet); moving it to StateTree, AI
+Perception and NavMesh is still the AI ticket.
 
 How the pieces connect:
 
@@ -337,6 +349,7 @@ Out of scope for this project:
 * Dedicated servers, MMO-style worlds, backend orchestration.
 * Browser-first or mobile builds, console ports.
 * Final art direction or content.
-* Any gameplay system beyond part 1 of the vertical slice: AI, health,
-  weapons, canoe, night defense, persistence and networking are documented
-  here and implemented in later tickets.
+* Any gameplay system beyond part 1 of the vertical slice and the weapons,
+  health and first infected of part 2 (ADR 0012): StateTree AI, the canoe,
+  night defense, persistence and networking are documented here and
+  implemented in later tickets.

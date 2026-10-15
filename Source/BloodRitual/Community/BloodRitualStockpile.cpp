@@ -24,7 +24,7 @@ namespace
 
 	// Fallback: /Engine/BasicShapes/Cube (1 m, centred) as a 1.5 m square, 1 m tall green block.
 	const FLinearColor FallbackColor(0.15f, 0.6f, 0.25f);
-	const FVector FallbackScale(1.5f, 1.5f, 1.0f);
+	const FVector StockpileFallbackScale(1.5f, 1.5f, 1.0f);
 
 	UStaticMeshComponent* CreateStoreMesh(AActor* Owner, const FName Name)
 	{
@@ -60,7 +60,7 @@ ABloodRitualStockpile::ABloodRitualStockpile()
 	{
 		bUsingFallbackMesh = true;
 		Mesh->SetStaticMesh(BloodRitualPlaceholderVisuals::FindMesh(TEXT("/Engine/BasicShapes/Cube.Cube")));
-		Mesh->SetRelativeScale3D(FallbackScale);
+		Mesh->SetRelativeScale3D(StockpileFallbackScale);
 	}
 }
 
