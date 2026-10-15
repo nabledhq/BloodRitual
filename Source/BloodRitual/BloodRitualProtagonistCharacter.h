@@ -8,7 +8,6 @@
 #include "BloodRitualProtagonistCharacter.generated.h"
 
 class UAnimSequence;
-class UBlendSpace;
 class UCameraComponent;
 class UBloodRitualHealthComponent;
 class UBloodRitualInteractionComponent;
@@ -29,21 +28,18 @@ class UStaticMeshComponent;
  * PlayerRespawnDelaySeconds, the game mode restarts the player at the PlayerStart (carried
  * supplies are lost with the body).
  *
- * The body plays one asset at a time (single-node animation, no Animation Blueprint), chosen in
- * UpdateAnimation each tick from the Quaternius clips retargeted to his skeleton:
- *   * the death clip once dead;
- *   * a one-shot action while one runs: the roll, the jump take-off and landing, searching a
- *     container (stretched over the search), depositing at the stockpile, a swing, a shot, a
- *     reload or a flinch;
- *   * the jump loop while falling;
- *   * the aiming pose while aiming a ranged weapon and standing still;
- *   * otherwise a blend space at the current ground speed: crouched, or standing with an idle
- *     that matches what he holds (unarmed, melee, ranged).
- * Switching assets does not blend. If the assets are missing he is a cylinder.
+ * The body runs ABP_Protagonist (UBloodRitualProtagonistAnimInstance), which blends locomotion,
+ * jumping, aiming and death from his state. One-shot actions are the Quaternius clips retargeted
+ * to his skeleton, played here as montages:
+ *   * full body (BloodRitualAnimSlots::FullBody): the roll, the jump take-off and landing,
+ *     searching a container (stretched over the search) and depositing at the stockpile. Moving
+ *     ends these once their movement lock is over;
+ *   * upper body (BloodRitualAnimSlots::UpperBody): a swing, a shot, a reload or a flinch, over
+ *     whatever the legs are doing, so he can fight on the move.
+ * If the assets are missing he is a cylinder.
  *
  * Input uses the legacy axis and action mappings in Config/DefaultInput.ini, bound in
- * SetupPlayerInputComponent. The real player character, with Enhanced Input and an Animation
- * Blueprint, is a later ticket under Characters/; it keeps the components added here.
+ * SetupPlayerInputComponent. Enhanced Input is a later ticket.
  */
 UCLASS()
 class BLOODRITUAL_API ABloodRitualProtagonistCharacter : public ACharacter
@@ -131,40 +127,22 @@ private:
 	void UpdateAimCamera(float DeltaSeconds);
 
 	/**
-	 * Plays a one-shot clip from StartSeconds at PlayRate. For LockSeconds movement input is
-	 * ignored; after that, movement input ends the action early.
+	 * Plays a full-body one-shot clip from StartSeconds at PlayRate. For LockSeconds movement
+	 * input is ignored; after that, movement input ends the action early.
 	 */
 	void PlayAction(UAnimSequence* Clip, float PlayRate, float StartSeconds = 0.0f, float LockSeconds = 0.0f);
 	void EndAction();
 	void AdvanceAction(float DeltaSeconds);
 
-	/** True while movement input should be ignored (rolling, swinging, dead). Otherwise input cancels the action. */
+	/** Plays a one-shot clip on the upper body at PlayRate, replacing any upper-body clip playing. Moving does not end it. */
+	void PlayUpperBodyAction(UAnimSequence* Clip, float PlayRate);
+	void StopUpperBodyAction();
+
+	/** True while movement input should be ignored (rolling, dead). Otherwise input cancels a full-body action. */
 	bool ConsumeMovementForAction();
-
-	/** Plays the current action, the jump loop while falling, the aiming pose or a blend space at the ground speed. */
-	void UpdateAnimation();
-
-	/** Idle / walk / jog / sprint over ground speed (cm/s), unarmed. */
-	UPROPERTY()
-	TObjectPtr<UBlendSpace> LocomotionBlendSpace;
-
-	/** The same with a melee weapon at the ready (idle: Quaternius "Sword_Idle"). */
-	UPROPERTY()
-	TObjectPtr<UBlendSpace> MeleeLocomotionBlendSpace;
-
-	/** The same with a ranged weapon held (idle: Quaternius "Pistol_Idle_Loop"). */
-	UPROPERTY()
-	TObjectPtr<UBlendSpace> RangedLocomotionBlendSpace;
-
-	/** Crouched idle / crouched walk over ground speed (cm/s). */
-	UPROPERTY()
-	TObjectPtr<UBlendSpace> CrouchBlendSpace;
 
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> JumpStart;
-
-	UPROPERTY()
-	TObjectPtr<UAnimSequence> JumpLoop;
 
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> JumpLand;
@@ -184,10 +162,6 @@ private:
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> SwingClip;
 
-	/** Arm raised along the aim (Quaternius "Pistol_Aim_Neutral"), held while aiming. */
-	UPROPERTY()
-	TObjectPtr<UAnimSequence> AimClip;
-
 	/** Recoil (Quaternius "Pistol_Shoot"), for the rifle and the bow. */
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> ShootClip;
@@ -198,10 +172,7 @@ private:
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> HitClip;
 
-	UPROPERTY()
-	TObjectPtr<UAnimSequence> DeathClip;
-
-	/** The one-shot clip playing, if any, and how long it and its movement lock have left. */
+	/** The full-body clip playing, if any, and how long it and its movement lock have left. */
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> ActionClip;
 	float ActionSecondsLeft = 0.0f;

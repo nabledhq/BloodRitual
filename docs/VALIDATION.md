@@ -99,8 +99,11 @@ runtime-spawned floor).
       bow an arrow flies where the crosshair points and Ammo drops by one; with the rifle, after
       **R** has loaded it from carried Ammo (the HUD shows loaded / magazine and carried), a shot
       with a muzzle flash. An empty rifle reloads by itself if he carries Ammo.
+- [ ] Swinging, shooting and reloading while walking or running play on his upper body while
+      his legs keep moving; picking or putting away a weapon, crouching, jumping, landing and
+      raising or lowering the aim blend rather than snap.
 - [ ] Holding **right mouse** with the bow or rifle pulls the camera in over his right shoulder,
-      turns him with the camera and slows him to a walk; standing still he raises the weapon.
+      turns him with the camera and slows him to a walk, with the weapon raised as he moves.
 - [ ] Four grey infected wander around the scavenging area (30 m out). Coming within about 16 m in
       front of one (or 3 m behind it) makes it run at him and punch; a rifle shot draws every
       infected within 30 m to the spot. A hit makes an infected flinch (the crosshair flashes

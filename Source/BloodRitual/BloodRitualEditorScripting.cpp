@@ -4,6 +4,7 @@
 
 #include "Animation/AnimSequence.h"
 #include "Animation/BlendSpace.h"
+#include "Animation/Skeleton.h"
 
 #if WITH_EDITOR
 bool UBloodRitualEditorScripting::SetBlendSpaceSamples(UBlendSpace* BlendSpace, const TArray<UAnimSequence*>& Animations, const TArray<FVector>& Positions)
@@ -29,5 +30,18 @@ bool UBloodRitualEditorScripting::SetBlendSpaceSamples(UBlendSpace* BlendSpace, 
 	BlendSpace->ResampleData();
 	BlendSpace->MarkPackageDirty();
 	return true;
+}
+
+void UBloodRitualEditorScripting::AddAnimSlot(USkeleton* Skeleton, FName SlotName, FName GroupName)
+{
+	if (Skeleton == nullptr || SlotName.IsNone() || GroupName.IsNone())
+	{
+		return;
+	}
+
+	Skeleton->Modify();
+	Skeleton->AddSlotGroupName(GroupName);
+	Skeleton->SetSlotGroupName(SlotName, GroupName);
+	Skeleton->MarkPackageDirty();
 }
 #endif

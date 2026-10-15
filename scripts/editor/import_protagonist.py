@@ -24,7 +24,8 @@ only the retargeted clips are needed at runtime.
 
 Delete Content/Characters/Protagonist, Content/Characters/Infected and Content/Characters/Materials
 on disk before re-running
-(the C++ class defaults load these assets when the editor starts). Run headless:
+(the C++ class defaults load these assets when the editor starts), and run
+scripts/editor/build_anim_blueprint.py afterwards to rebuild ABP_Protagonist. Run headless:
 
     "<UE_ROOT>\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe" "<repo>\\BloodRitual.uproject" ^
         -run=pythonscript -script="<repo>\\scripts\\editor\\import_protagonist.py" -unattended -nopause
