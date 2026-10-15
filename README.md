@@ -125,7 +125,8 @@ The stand-in art is committed, so you only rebuild it to change it:
   its CC0 "MakeHuman system assets", "skins02" and "bodyparts05" packs (body, outfit,
   textures, and a clean copy of the Quaternius clips), `scripts/blender/build_infected.py`
   builds the infected on the same rig, then `scripts/editor/import_protagonist.py`
-  imports both and retargets the clips.
+  imports both and retargets the clips, and `scripts/editor/build_anim_blueprint.py`
+  builds the Protagonist's Animation Blueprint from them.
 - `Content/Weapons`: `scripts/blender/build_weapons.py` (after the Protagonist build)
   models the weapons in his grip, then `scripts/editor/import_weapons.py` imports them.
 

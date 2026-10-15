@@ -8,6 +8,7 @@
 
 class UAnimSequence;
 class UBlendSpace;
+class USkeleton;
 
 /**
  * Editor-only helpers for the asset scripts under scripts/editor/, for engine operations that
@@ -27,5 +28,13 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "BloodRitual|Editor Scripting")
 	static bool SetBlendSpaceSamples(UBlendSpace* BlendSpace, const TArray<UAnimSequence*>& Animations, const TArray<FVector>& Positions);
+
+	/**
+	 * Registers a montage slot on a skeleton in its own slot group (created if missing). Montages
+	 * in one group stop each other, so a slot in a separate group can play alongside the default
+	 * one. The skeleton's slot groups are not reachable from Python.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "BloodRitual|Editor Scripting")
+	static void AddAnimSlot(USkeleton* Skeleton, FName SlotName, FName GroupName);
 #endif
 };

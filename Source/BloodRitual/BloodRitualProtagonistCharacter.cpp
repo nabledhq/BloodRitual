@@ -3,15 +3,15 @@
 #include "BloodRitualProtagonistCharacter.h"
 
 #include "BloodRitualSettings.h"
+#include "Characters/BloodRitualProtagonistAnimInstance.h"
 #include "Combat/BloodRitualWeaponComponent.h"
 #include "Community/BloodRitualStockpile.h"
 #include "Interaction/BloodRitualInteractionComponent.h"
 #include "Inventory/BloodRitualInventoryComponent.h"
 #include "Inventory/BloodRitualSupplyContainer.h"
 #include "Survival/BloodRitualHealthComponent.h"
+#include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
-#include "Animation/AnimSingleNodeInstance.h"
-#include "Animation/BlendSpace.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -49,14 +49,15 @@ namespace BloodRitualProtagonistTuning
 	constexpr float JumpLandPlayRate = 1.4f;
 	constexpr float JumpLandMaxGroundSpeed = 200.0f;
 
-	// Fighting: a swing roots him for most of the clip; a shot only for the recoil.
-	constexpr float SwingLockFraction = 0.75f;
+	// Fighting plays on the upper body, so swings, shots and reloads do not root him.
 	constexpr float ShootPlayRate = 1.2f;
-	constexpr float ShootLockSeconds = 0.25f;
+
+	// Montage blends: full-body actions ease in and out a little more than upper-body ones.
+	constexpr float FullBodyBlendSeconds = 0.15f;
+	constexpr float UpperBodyBlendSeconds = 0.1f;
 
 	// Aiming: a walk, and the camera pulled in over his right shoulder.
 	constexpr float AimWalkSpeed = 200.0f;
-	constexpr float AimStillSpeed = 20.0f;
 	constexpr float CameraArmLength = 400.0f;
 	constexpr float AimArmLength = 170.0f;
 	const FVector CameraSocketOffset(0.0f, 0.0f, 60.0f);
@@ -103,12 +104,6 @@ ABloodRitualProtagonistCharacter::ABloodRitualProtagonistCharacter()
 		ConstructorHelpers::FObjectFinder<UAnimSequence> Finder(*Path);
 		return Finder.Object;
 	};
-	auto Blend = [Animations](const TCHAR* Name)
-	{
-		const FString Path = FString::Printf(TEXT("%s%s.%s"), Animations, Name, Name);
-		ConstructorHelpers::FObjectFinder<UBlendSpace> Finder(*Path);
-		return Finder.Object;
-	};
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> BodyFinder(TEXT("/Game/Characters/Protagonist/SKM_Protagonist.SKM_Protagonist"));
 	if (BodyFinder.Succeeded())
 	{
@@ -116,23 +111,24 @@ ABloodRitualProtagonistCharacter::ABloodRitualProtagonistCharacter()
 		// centre and the pawn faces +X.
 		GetMesh()->SetSkeletalMeshAsset(BodyFinder.Object);
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f), FRotator(0.0f, -90.0f, 0.0f));
-		GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		LocomotionBlendSpace = Blend(TEXT("BS_Locomotion"));
-		MeleeLocomotionBlendSpace = Blend(TEXT("BS_Locomotion_Melee"));
-		RangedLocomotionBlendSpace = Blend(TEXT("BS_Locomotion_Ranged"));
-		CrouchBlendSpace = Blend(TEXT("BS_Crouch"));
+
+		// The Animation Blueprint (scripts/editor/build_anim_blueprint.py) holds the blend spaces,
+		// the jump loop, the aiming pose and the death clip; the clips below play as montages.
+		ConstructorHelpers::FClassFinder<UAnimInstance> AnimFinder(TEXT("/Game/Characters/Protagonist/ABP_Protagonist"));
+		if (AnimFinder.Succeeded())
+		{
+			GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+			GetMesh()->SetAnimInstanceClass(AnimFinder.Class);
+		}
 		JumpStart = Clip(TEXT("A_Jump_Start"));
-		JumpLoop = Clip(TEXT("A_Jump_Loop"));
 		JumpLand = Clip(TEXT("A_Jump_Land"));
 		RollClip = Clip(TEXT("A_Roll"));
 		SearchClip = Clip(TEXT("A_Interact"));
 		DepositClip = Clip(TEXT("A_PickUp_Table"));
 		SwingClip = Clip(TEXT("A_Sword_Attack"));
-		AimClip = Clip(TEXT("A_Pistol_Aim_Neutral"));
 		ShootClip = Clip(TEXT("A_Pistol_Shoot"));
 		ReloadClip = Clip(TEXT("A_Pistol_Reload"));
 		HitClip = Clip(TEXT("A_Hit_Chest"));
-		DeathClip = Clip(TEXT("A_Death01"));
 	}
 	else
 	{
@@ -174,7 +170,6 @@ void ABloodRitualProtagonistCharacter::BeginPlay()
 	{
 		Inventory->AddSupply(EBloodRitualSupplyType::Ammo, Settings->StartingAmmo);
 	}
-	UpdateAnimation();
 }
 
 void ABloodRitualProtagonistCharacter::Tick(float DeltaSeconds)
@@ -183,7 +178,6 @@ void ABloodRitualProtagonistCharacter::Tick(float DeltaSeconds)
 
 	AdvanceAction(DeltaSeconds);
 	UpdateAimCamera(DeltaSeconds);
-	UpdateAnimation();
 }
 
 bool ABloodRitualProtagonistCharacter::IsDead() const
@@ -248,6 +242,7 @@ void ABloodRitualProtagonistCharacter::Roll()
 	}
 
 	Weapons->Interrupt();
+	StopUpperBodyAction();
 	PlayAction(RollClip, BloodRitualProtagonistTuning::RollPlayRate, 0.0f, BloodRitualProtagonistTuning::RollMoveSeconds);
 	bRolling = true;
 	RollDirection = Direction;
@@ -261,10 +256,12 @@ void ABloodRitualProtagonistCharacter::SelectWeapon(EBloodRitualWeapon Weapon)
 	{
 		return;
 	}
+	const bool bWasReloading = Weapons->IsReloading();
 	Weapons->SelectWeapon(Weapon);
-	if (ActionClip == ReloadClip)
+	if (bWasReloading && !Weapons->IsReloading())
 	{
-		EndAction();
+		// Switching abandoned the reload.
+		StopUpperBodyAction();
 	}
 	if (Weapons->GetHold() != EBloodRitualWeaponHold::Ranged)
 	{
@@ -292,14 +289,10 @@ void ABloodRitualProtagonistCharacter::Attack()
 	switch (Weapons->Attack(ViewLocation, ViewRotation.Vector()))
 	{
 	case EBloodRitualAttackResult::Swing:
-	{
-		const float Rate = Weapons->GetSwingRate();
-		const float Seconds = SwingClip != nullptr ? SwingClip->GetPlayLength() / Rate : 0.0f;
-		PlayAction(SwingClip, Rate, 0.0f, Seconds * BloodRitualProtagonistTuning::SwingLockFraction);
+		PlayUpperBodyAction(SwingClip, Weapons->GetSwingRate());
 		break;
-	}
 	case EBloodRitualAttackResult::Shot:
-		PlayAction(ShootClip, BloodRitualProtagonistTuning::ShootPlayRate, 0.0f, BloodRitualProtagonistTuning::ShootLockSeconds);
+		PlayUpperBodyAction(ShootClip, BloodRitualProtagonistTuning::ShootPlayRate);
 		break;
 	case EBloodRitualAttackResult::DryFire:
 		// An empty rifle reloads by itself if he carries rounds.
@@ -319,7 +312,7 @@ void ABloodRitualProtagonistCharacter::Reload()
 	const float Seconds = GetDefault<UBloodRitualSettings>()->RifleReloadSeconds;
 	if (ReloadClip != nullptr && Seconds > 0.0f)
 	{
-		PlayAction(ReloadClip, ReloadClip->GetPlayLength() / Seconds);
+		PlayUpperBodyAction(ReloadClip, ReloadClip->GetPlayLength() / Seconds);
 	}
 }
 
@@ -356,22 +349,22 @@ void ABloodRitualProtagonistCharacter::HandleDamaged(UBloodRitualHealthComponent
 	{
 		return;
 	}
+	// A flinch cuts a search or deposit short and any swing or reload; he can keep moving.
 	Weapons->Interrupt();
-	PlayAction(HitClip, 1.0f);
+	EndAction();
+	PlayUpperBodyAction(HitClip, 1.0f);
 }
 
 void ABloodRitualProtagonistCharacter::HandleDied(UBloodRitualHealthComponent* DeadHealth, AActor* Killer)
 {
+	// The Animation Blueprint blends to the death clip once IsDead().
 	EndAction();
+	StopUpperBodyAction();
 	Weapons->Interrupt();
 	bAiming = false;
 	UnCrouch();
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
-	if (DeathClip != nullptr)
-	{
-		GetMesh()->PlayAnimation(DeathClip, /*bLooping*/ false);
-	}
 	const float Delay = FMath::Max(GetDefault<UBloodRitualSettings>()->PlayerRespawnDelaySeconds, 0.1f);
 	GetWorldTimerManager().SetTimer(RespawnTimer, this, &ABloodRitualProtagonistCharacter::Respawn, Delay, false);
 }
@@ -402,17 +395,23 @@ void ABloodRitualProtagonistCharacter::PlayAction(UAnimSequence* Clip, float Pla
 	ActionSecondsLeft = FMath::Max(Clip->GetPlayLength() - StartSeconds, 0.0f) / PlayRate;
 	ActionLockSecondsLeft = LockSeconds;
 
-	USkeletalMeshComponent* Body = GetMesh();
-	Body->PlayAnimation(Clip, /*bLooping*/ false);
-	if (UAnimSingleNodeInstance* Node = Body->GetSingleNodeInstance())
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 	{
-		Node->SetPlayRate(PlayRate);
-		Node->SetPosition(StartSeconds, /*bFireNotifies*/ false);
+		const float Blend = BloodRitualProtagonistTuning::FullBodyBlendSeconds;
+		Anim->PlaySlotAnimationAsDynamicMontage(Clip, BloodRitualAnimSlots::FullBody, Blend, Blend, PlayRate,
+			/*LoopCount*/ 1, /*BlendOutTriggerTime*/ -1.0f, StartSeconds);
 	}
 }
 
 void ABloodRitualProtagonistCharacter::EndAction()
 {
+	if (ActionClip != nullptr)
+	{
+		if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+		{
+			Anim->StopSlotAnimation(BloodRitualProtagonistTuning::FullBodyBlendSeconds, BloodRitualAnimSlots::FullBody);
+		}
+	}
 	ActionClip = nullptr;
 	ActionSecondsLeft = 0.0f;
 	ActionLockSecondsLeft = 0.0f;
@@ -477,58 +476,22 @@ bool ABloodRitualProtagonistCharacter::ConsumeMovementForAction()
 	return false;
 }
 
-void ABloodRitualProtagonistCharacter::UpdateAnimation()
+void ABloodRitualProtagonistCharacter::PlayUpperBodyAction(UAnimSequence* Clip, float PlayRate)
 {
-	if (LocomotionBlendSpace == nullptr || IsDead() || ActionClip != nullptr)
+	UAnimInstance* Anim = GetMesh()->GetAnimInstance();
+	if (Clip == nullptr || PlayRate <= 0.0f || IsDead() || Anim == nullptr)
 	{
-		// Nothing to play, the death clip holds, or PlayAction started the action.
 		return;
 	}
+	const float Blend = BloodRitualProtagonistTuning::UpperBodyBlendSeconds;
+	Anim->PlaySlotAnimationAsDynamicMontage(Clip, BloodRitualAnimSlots::UpperBody, Blend, Blend, PlayRate);
+}
 
-	USkeletalMeshComponent* Body = GetMesh();
-	UAnimSingleNodeInstance* Node = Body->GetSingleNodeInstance();
-	const float GroundSpeed = GetVelocity().Size2D();
-
-	UBlendSpace* BlendSpace = nullptr;
-	UAnimationAsset* Wanted = nullptr;
-	if (JumpLoop != nullptr && GetCharacterMovement()->IsFalling())
+void ABloodRitualProtagonistCharacter::StopUpperBodyAction()
+{
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 	{
-		Wanted = JumpLoop;
-	}
-	else if (bAiming && AimClip != nullptr && GroundSpeed < BloodRitualProtagonistTuning::AimStillSpeed)
-	{
-		Wanted = AimClip;
-	}
-	else
-	{
-		BlendSpace = LocomotionBlendSpace;
-		if (bIsCrouched && CrouchBlendSpace != nullptr)
-		{
-			BlendSpace = CrouchBlendSpace;
-		}
-		else if (Weapons->GetHold() == EBloodRitualWeaponHold::Melee && MeleeLocomotionBlendSpace != nullptr)
-		{
-			BlendSpace = MeleeLocomotionBlendSpace;
-		}
-		else if (Weapons->GetHold() == EBloodRitualWeaponHold::Ranged && RangedLocomotionBlendSpace != nullptr)
-		{
-			BlendSpace = RangedLocomotionBlendSpace;
-		}
-		Wanted = BlendSpace;
-	}
-
-	if (Node == nullptr || Node->GetAnimationAsset() != Wanted)
-	{
-		Body->PlayAnimation(Wanted, /*bLooping*/ true);
-		Node = Body->GetSingleNodeInstance();
-		if (Node != nullptr)
-		{
-			Node->SetPlayRate(1.0f);
-		}
-	}
-	if (Node != nullptr && BlendSpace != nullptr)
-	{
-		Node->SetBlendSpacePosition(FVector(GroundSpeed, 0.0f, 0.0f));
+		Anim->StopSlotAnimation(BloodRitualProtagonistTuning::UpperBodyBlendSeconds, BloodRitualAnimSlots::UpperBody);
 	}
 }
 
